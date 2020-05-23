@@ -77,7 +77,7 @@ id id0(
     .ex_wdata_i(ex_wdata_o), .ex_wd_i(ex_wd_o), .ex_wreg_i(ex_wreg_o),
     
     //数据前推->处于访存阶段的指令的运算结果
-    .mem_wdata_i(mem_wdata_o), .mem_wd_i(mem_wdata_o), .mem_wreg_i(mem_wreg_o),
+    .mem_wdata_i(mem_wdata_o), .mem_wd_i(mem_wd_o), .mem_wreg_i(mem_wreg_o),
     
     //送到ID/EX模块的信息
     .aluop_o(id_aluop_o), .alusel_o(id_alusel_o),

@@ -19,23 +19,46 @@ module ex(
 //逻辑运算
 reg [31:0] logicout;
 
-//组合逻辑->根据子类型运算
+//移位运算 
+reg [31:0] shiftres;
+
+//组合逻辑->逻辑运算
 always @(*) begin
     if(rst) begin
         logicout = 0;
     end else begin
         logicout = 0;
         case(aluop_i)
-            `EXE_OR_OP: logicout<= reg1_i | reg2_i;
+            `ALU_OR: logicout = reg1_i | reg2_i;
+            `ALU_AND: logicout = reg1_i & reg2_i;
+            `ALU_XOR: logicout = reg1_i ^ reg2_i;
+            `ALU_NOR: logicout = ~(reg1_i | reg2_i);
         endcase
     end
 end
+//组合逻辑->移位运算
+always @(*) begin
+    if(rst) begin
+        shiftres = 0;
+    end else begin
+        shiftres = 0;
+        case(aluop_i)
+            `ALU_SLL: shiftres = reg2_i << reg1_i[4:0];
+            `ALU_SRL: shiftres = reg2_i >> reg1_i[4:0];
+            `ALU_SRA: shiftres =  ({32{reg2_i[31]}} << (32-reg1_i[4:0]))
+                            | (reg2_i >> reg1_i[4:0]);
+        endcase
+    end
+end
+
+
 //组合逻辑->根据类型选择
 always @(*) begin
     wd_o = wd_i;
     wreg_o = wreg_i;
     case(alusel_i)
-        `EXE_RES_LOGIC: wdata_o = logicout;
+        `ALU_RES_LOGIC: wdata_o = logicout;
+        `ALU_RES_SHIFT: wdata_o = shiftres;
     default: wdata_o = 0;
     endcase
 end

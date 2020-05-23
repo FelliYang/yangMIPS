@@ -34,31 +34,185 @@ module id(
 
 );
 
-reg [31:0] imm; //立即数
-reg [5:0] opcode;
-reg [4:0] sa;
-reg [5:0] func;
+reg [31:0]  imm; //立即数
+reg [5:0]   opcode;
+reg [4:0]   rs,rt,rd;
+reg [4:0]   sa;
+reg [5:0]   func;
+reg         InstValid;
+
 
 always @(*) begin
     if(rst == 1) begin
         {reg1_addr_o,reg2_addr_o,reg1_read_o,reg2_read_o,
         aluop_o,alusel_o,wd_o,wreg_o} = 0;
+        {opcode,rs,rt,rd,sa,func,imm} = 0;
+        InstValid = 1;
     end else begin
-        {reg1_addr_o,reg2_addr_o,reg1_read_o,reg2_read_o,
-        aluop_o,alusel_o,wd_o,wreg_o} = 0; //组合逻辑
-        opcode = inst_i[31:26];
-        reg1_addr_o = inst_i[25:21];
-        reg2_addr_o = inst_i[20:16];
-        wd_o = reg2_addr_o;
+        {reg1_read_o,reg2_read_o,
+        aluop_o,alusel_o,wreg_o, imm} = 0; //组合逻辑
+        {opcode,rs,rt,rd,sa,func} = inst_i;
+        reg1_addr_o = rs;
+        reg2_addr_o = rt;
+        wd_o = rd; //默认目的寄存器地址
+        InstValid = 0;
         case(opcode)
-            `EXE_ORI:begin //ori 指令
-                wreg_o <= 1;
-                alusel_o <= `EXE_RES_LOGIC;
-                aluop_o <= `EXE_OR_OP;
-                reg1_read_o <= 1; //只需要读一个寄存器
-                reg2_read_o <= 0;
-                imm <= {16'h0, inst_i[15:0]}; //逻辑扩展
+            //special类
+            `OP_SPECIAL:begin
+                case(func)
+                    `FUC_AND: begin
+                        if(sa==0) begin
+                            wreg_o = 1;
+                            alusel_o = `ALU_RES_LOGIC;
+                            aluop_o = `ALU_AND;
+                            reg1_read_o = 1;
+                            reg2_read_o = 1;
+                            InstValid = 1;  
+                        end
+                    end
+                    `FUC_OR:begin
+                        if(sa==0) begin
+                            wreg_o = 1;
+                            alusel_o = `ALU_RES_LOGIC;
+                            aluop_o = `ALU_OR;
+                            reg1_read_o = 1;
+                            reg2_read_o = 1;
+                            InstValid = 1;  
+                        end 
+                    end
+                    `FUC_XOR:begin
+                        if(sa==0) begin
+                            wreg_o = 1;
+                            alusel_o = `ALU_RES_LOGIC;
+                            aluop_o = `ALU_XOR;
+                            reg1_read_o = 1;
+                            reg2_read_o = 1;
+                            InstValid = 1;  
+                        end
+                    end
+                    `FUC_NOR:begin
+                        if(sa==0) begin
+                            wreg_o = 1;
+                            alusel_o = `ALU_RES_LOGIC;
+                            aluop_o = `ALU_NOR;
+                            reg1_read_o = 1;
+                            reg2_read_o = 1;
+                            InstValid = 1;  
+                        end
+                    end
+                    `FUC_SLLV:begin
+                        if(sa==0) begin
+                            wreg_o = 1;
+                            alusel_o = `ALU_RES_SHIFT;
+                            aluop_o = `ALU_SLL;
+                            reg1_read_o = 1;
+                            reg2_read_o = 1;
+                            InstValid = 1;
+                        end
+                    end
+                    `FUC_SRLV:begin
+                       if(sa==0) begin
+                            wreg_o = 1;
+                            alusel_o = `ALU_RES_SHIFT;
+                            aluop_o = `ALU_SRL;
+                            reg1_read_o = 1;
+                            reg2_read_o = 1;
+                            InstValid = 1;
+                        end
+                    end
+                    `FUC_SRAV:begin
+                        if(sa==0) begin
+                            wreg_o = 1;
+                            alusel_o = `ALU_RES_SHIFT;
+                            aluop_o = `ALU_SRA;
+                            reg1_read_o = 1;
+                            reg2_read_o = 1;
+                            InstValid = 1;
+                        end
+                    end
+                    `FUC_SLL:begin
+                        if(rs==0) begin
+                            wreg_o = 1;
+                            alusel_o = `ALU_RES_SHIFT;
+                            aluop_o = `ALU_SLL;
+                            reg1_read_o = 0;
+                            reg2_read_o = 1; //只读取rt
+                            imm[4:0] = sa; //把sa存放到imm里面
+                            InstValid = 1;
+                        end
+                    end
+                    `FUC_SRL:begin
+                        if(rs==0) begin
+                            wreg_o = 1;
+                            alusel_o = `ALU_RES_SHIFT;
+                            aluop_o = `ALU_SRL;
+                            reg1_read_o = 0;
+                            reg2_read_o = 1; //只读取rt
+                            imm[4:0] = sa; //把sa存放到imm里面
+                            InstValid = 1;
+                        end
+                    end
+                    `FUC_SRA:begin
+                        if(rs==0) begin
+                            wreg_o = 1;
+                            alusel_o = `ALU_RES_SHIFT;
+                            aluop_o = `ALU_SRA;
+                            reg1_read_o = 0;
+                            reg2_read_o = 1; //只读取rt
+                            imm[4:0] = sa; //把sa存放到imm里面
+                            InstValid = 1;
+                        end
+                    end
+                default: InstValid = 0; //未定义指令
+                
+                endcase
             end
+            `OP_ANDI:begin
+                wreg_o = 1;
+                alusel_o = `ALU_RES_LOGIC;
+                aluop_o = `ALU_AND;
+                reg1_read_o = 1; //只需要读一个寄存器
+                reg2_read_o = 0;
+                imm = {16'h0, inst_i[15:0]}; //逻辑扩展
+                wd_o = rt; //目的寄存器为rt
+                InstValid = 1;
+            end
+            `OP_ORI:begin //ori 指令
+                wreg_o = 1;
+                alusel_o = `ALU_RES_LOGIC;
+                aluop_o = `ALU_OR;
+                reg1_read_o = 1; //只需要读一个寄存器
+                reg2_read_o = 0;
+                imm = {16'h0, inst_i[15:0]}; //逻辑扩展
+                wd_o = rt; //目的寄存器为rt
+                InstValid = 1;
+            end
+            `OP_XORI:begin
+                wreg_o = 1;
+                alusel_o = `ALU_RES_LOGIC;
+                aluop_o = `ALU_XOR;
+                reg1_read_o = 1; //只需要读一个寄存器
+                reg2_read_o = 0;
+                imm = {16'h0, inst_i[15:0]}; //逻辑扩展
+                wd_o = rt; //目的寄存器为rt
+                InstValid = 1;
+            end
+            `OP_LUI:begin
+                wreg_o = 1;
+                alusel_o = `ALU_RES_LOGIC;
+                aluop_o = `ALU_OR;
+                reg1_read_o = 1; //只需要读一个寄存器
+                reg2_read_o = 0;
+                imm = {inst_i[15:0],16'h0}; //逻辑扩展
+                wd_o = rt; //目的寄存器为rt
+                InstValid = 1;
+            end
+            `OP_PREF:begin
+                alusel_o = `ALU_RES_NOP;
+                aluop_o = `ALU_NOP;
+                InstValid = 1;
+            end
+            default: InstValid = 0;
         endcase
     end
 end
