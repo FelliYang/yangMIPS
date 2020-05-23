@@ -5,7 +5,7 @@ module id(
     //来自取指阶段的信息
     input wire[`InstAddrBus]    pc_i,
     input wire[`InstBus]        inst_i,
-    
+
     //寄存器堆读取回路
     output reg [`RegAddrBus]   reg1_addr_o,
     output reg [`RegAddrBus]   reg2_addr_o,
@@ -13,7 +13,17 @@ module id(
     output reg                 reg2_read_o,
     input [`RegBus]             reg1_data_i,
     input [`RegBus]             reg2_data_i,
+
+    //数据前推->处于执行阶段的指令的运算结果
+    input [31:0]                ex_wdata_i,
+    input [4:0]                 ex_wd_i,
+    input                       ex_wreg_i,
     
+    //数据前推->处于访存阶段的指令的运算结果
+    input [31:0]                mem_wdata_i,
+    input [4:0]                 mem_wd_i,
+    input                       mem_wreg_i,
+
     //译码阶段的结果
     output reg[7:0]                aluop_o, //运算子类型
     output reg[2:0]               alusel_o, //运算类型
@@ -55,13 +65,31 @@ end
 
 //操作数1
 always @(*) begin
-    if(rst==1) reg1_o <= 0;
-    else reg1_o <= (reg1_read_o)?reg1_data_i : imm;
+    if(rst==1) reg1_o = 0;
+    else begin
+        if(reg1_read_o) begin
+            if(ex_wreg_i && ex_wd_i==reg1_addr_o) 
+                reg1_o = ex_wdata_i;
+            else if(mem_wreg_i && mem_wd_i==reg1_addr_o)
+                reg1_o = mem_wdata_i;
+            else reg1_o = reg1_data_i;
+        end
+        else reg1_o = imm;
+    end
 end
 //操作数2
 always @(*) begin
-    if(rst) reg2_o <= 0;
-    else reg2_o <= (reg2_read_o)?reg2_data_i : imm;
+    if(rst) reg2_o = 0;
+    else begin
+        if(reg2_read_o) begin
+            if(ex_wreg_i && ex_wd_i==reg2_addr_o) 
+                reg2_o = ex_wdata_i;
+            else if(mem_wreg_i && mem_wd_i==reg2_addr_o)
+                reg2_o = mem_wdata_i;
+            else reg2_o = reg2_data_i;
+        end
+        else reg2_o = imm;
+    end
 end
 
 endmodule // id
