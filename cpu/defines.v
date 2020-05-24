@@ -49,6 +49,13 @@
 `define FUC_OR          6'b100101
 `define FUC_XOR         6'b100110
 `define FUC_NOR         6'b100111
+//移动指令
+`define FUC_MOVZ		6'b001010
+`define FUC_MOVN		6'b001011
+`define FUC_MFHI		6'b010000
+`define FUC_MTHI		6'b010001
+`define FUC_MFLO		6'b010010
+`define FUC_MTLO		6'b010011
 
 
 //aluop ->运算子类型	前3位表示alusel运算类型 后5位表示子类型编号
@@ -69,12 +76,18 @@
 `define ALU_SRAV  		8'b010_00101
 
 `define ALU_NOP			8'b000_00000
+
+`define ALU_MOVZ		8'b011_00000
+`define ALU_MOVN		8'b011_00001
+`define ALU_MFHI		8'b011_00010
+`define ALU_MFLO		8'b011_00011
+`define ALU_MTHI		8'b011_00100
+`define ALU_MTLO		8'b011_00101
  
 //alusel -> 运算类型
 `define ALU_RES_LOGIC   3'b001
 `define ALU_RES_NOP     3'b000
 `define ALU_RES_SHIFT 	3'b010
-
-
+`define ALU_RES_MOVE	3'b011
 
 `endif

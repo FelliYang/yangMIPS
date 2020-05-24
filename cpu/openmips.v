@@ -31,25 +31,37 @@ wire        ex_wreg_i;
 wire [2:0]  ex_alusel_i;
 wire [7:0]  ex_aluop_i;
 
+//连接HI/LO模块的输出于EX模块的输入
+wire [31:0] hi, lo;
+
 //连接执行阶段EX模块的输出与EX/MEM模块的输入
 wire [31:0] ex_wdata_o;
 wire [4:0]  ex_wd_o;
 wire        ex_wreg_o;
+wire        ex_whilo_o;
+wire [31:0] ex_hi_o, ex_lo_o;
 
 //连接EX/MEM模块的输出与访存阶段MEM模块的输入
 wire [31:0] mem_wdata_i;
 wire [4:0]  mem_wd_i;
 wire        mem_wreg_i;
+wire        mem_whilo_i;
+wire [31:0]  mem_hi_i,mem_lo_i;
 
 //连接访存阶段MEM模块的输出与MEM/WB模块的输入
 wire [31:0] mem_wdata_o;
 wire [4:0]  mem_wd_o;
 wire        mem_wreg_o;
+wire        mem_whilo_o;
+wire [31:0] mem_hi_o,mem_lo_o;
 
 //连接MEM/WB模块的输出与回写阶段的输入
 wire [31:0] wb_wdata_i;
 wire [4:0]  wb_wd_i;
 wire        wb_wreg_i;
+wire        wb_whilo_i;
+wire [31:0]  wb_hi_i, wb_lo_i;
+
 //pc_reg实例化
 pc_reg pc_reg0(
     .clk(clk), .rst(rst), .pc(pc), .ce(rom_ce_o)
@@ -119,9 +131,17 @@ ex ex0(
     .reg1_i(ex_reg1_i), .reg2_i(ex_reg2_i),
     .wd_i(ex_wd_i), .wreg_i(ex_wreg_i),
     .alusel_i(ex_alusel_i), .aluop_i(ex_aluop_i),
+
+    //来自HI/LO模块的信息
+    .hi_i(hi), .lo_i(lo),
+
+    //HI/LO数据前推，来自访存阶段MEM模块的信息
+    .mem_whilo_i(mem_whilo_o), .mem_hi_i(mem_hi_o), .mem_lo_i(mem_lo_o),
     
-    //输出到EX/MEM模块的信息
-    .wdata_o(ex_wdata_o), .wd_o(ex_wd_o), .wreg_o(ex_wreg_o)
+    //输出到EX/MEM模块的信息->通用寄存器
+    .wdata_o(ex_wdata_o), .wd_o(ex_wd_o), .wreg_o(ex_wreg_o),
+    //->HI/LO寄存器
+    .whilo_o(ex_whilo_o), .hi_o(ex_hi_o), .lo_o(ex_lo_o)
 );
 
 //EX/MEM模块实例化
@@ -131,9 +151,11 @@ ex_mem ex_mem0(
 
     //从执行阶段EX模块传递过来的信息
     .ex_wdata(ex_wdata_o), .ex_wd(ex_wd_o), .ex_wreg(ex_wreg_o),
+    .ex_whilo(ex_whilo_o), .ex_hi(ex_hi_o), .ex_lo(ex_lo_o),
 
     //输出到MEM级的信息
-    .mem_wdata(mem_wdata_i), .mem_wd(mem_wd_i), .mem_wreg(mem_wreg_i)
+    .mem_wdata(mem_wdata_i), .mem_wd(mem_wd_i), .mem_wreg(mem_wreg_i),
+    .mem_whilo(mem_whilo_i), .mem_hi(mem_hi_i), .mem_lo(mem_lo_i)
 );
 
 //MEM模块实例化
@@ -142,9 +164,11 @@ mem mem0(
 
     //来自执行阶段的信息
     .wdata_i(mem_wdata_i), .wd_i(mem_wd_i), .wreg_i(mem_wreg_i),
+    .whilo_i(mem_whilo_i), .hi_i(mem_hi_i), .lo_i(mem_lo_i),
 
     //输出到MEM/WB模块的信息
-    .wdata_o(mem_wdata_o), .wd_o(mem_wd_o), .wreg_o(mem_wreg_o)
+    .wdata_o(mem_wdata_o), .wd_o(mem_wd_o), .wreg_o(mem_wreg_o),
+    .whilo_o(mem_whilo_o), .hi_o(mem_hi_o), .lo_o(mem_lo_o)
 );
 
 //MEM/WB模块实例化
@@ -153,10 +177,22 @@ mem_wb mem_wb0(
 
     //来自访存阶段mem模块的信息
     .mem_wdata(mem_wdata_o), .mem_wd(mem_wd_o), .mem_wreg(mem_wreg_o),
+    .mem_whilo(mem_whilo_o), .mem_hi(mem_hi_o), .mem_lo(mem_lo_o),
 
     //输出到写回阶段的信息
-    .wb_wdata(wb_wdata_i), .wb_wd(wb_wd_i), .wb_wreg(wb_wreg_i)
+    .wb_wdata(wb_wdata_i), .wb_wd(wb_wd_i), .wb_wreg(wb_wreg_i),
+    .wb_whilo(wb_whilo_i), .wb_hi(wb_hi_i), .wb_lo(wb_lo_i)
 
+);
+
+hilo_reg hilo_reg0(
+    .clk(clk), .rst(rst),
+
+    //来自写回阶段的信息
+    .we(wb_whilo_i), .hi_i(wb_hi_i), .lo_i(wb_lo_i),
+
+    //送到执行阶段的信息
+    .hi_o(hi), .lo_o(lo)
 );
 
 endmodule // openmips

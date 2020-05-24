@@ -3,22 +3,29 @@ module ex_mem(
     input rst,
 
     //执行级的结果
-    input [4:0] ex_wd,
-    input [31:0] ex_wdata,
-    input       ex_wreg,
+    input [4:0]         ex_wd,
+    input [31:0]        ex_wdata,
+    input               ex_wreg,
+    input               ex_whilo,
+    input [31:0]        ex_hi,ex_lo,
 
     //送到访存阶段的信息
-    output reg[4:0] mem_wd,
-    output reg[31:0] mem_wdata,
-    output reg    mem_wreg
+    output reg[4:0]     mem_wd,
+    output reg[31:0]    mem_wdata,
+    output reg          mem_wreg,
+    output reg          mem_whilo,
+    output reg [31:0]   mem_hi,mem_lo
 );
 
 always @(posedge clk) begin
-    if(rst) {mem_wd, mem_wdata,mem_wreg} <= 0;
+    if(rst) {mem_wd, mem_wdata,mem_wreg, mem_whilo, mem_hi, mem_lo} <= 0;
     else begin
         mem_wd <= ex_wd;
         mem_wdata <= ex_wdata;
         mem_wreg <= ex_wreg;
+        mem_whilo <= ex_whilo;
+        mem_hi <= ex_hi;
+        mem_lo <= ex_lo;
     end
 end
 

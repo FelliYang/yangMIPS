@@ -10,17 +10,35 @@ module ex(
     input [4:0] wd_i,
     input       wreg_i,
 
-    //执行级的结果
+    //HILO模块给出的寄存器值
+    input [31:0] hi_i,lo_i,
+    
+    //访存阶段HI.LO数据前推
+    input mem_whilo_i,
+    input [31:0] mem_hi_i,mem_lo_i,
+
+    //执行级的结果->通用寄存器
     output reg [4:0] wd_o,
     output reg [31:0] wdata_o,
-    output reg     wreg_o
+    output reg     wreg_o,
+    //->HILO寄存器
+    output reg  whilo_o,
+    output reg [31:0] hi_o,lo_o
 
 );
-//逻辑运算
-reg [31:0] logicout;
+reg [31:0] logicout; //逻辑运算
+reg [31:0] shiftres; //移位运算 
+reg [31:0] moveres; //移动运算
+reg [31:0] HI, LO; //保存寄存器的值
 
-//移位运算 
-reg [31:0] shiftres;
+//HI/LO数据相关问题
+always@(*)begin
+    if(rst) {HI,LO} = 0;
+    else begin
+        HI = (mem_whilo_i)?mem_hi_i:hi_i;
+        LO = (mem_whilo_i)?mem_lo_i:lo_i;
+    end
+end
 
 //组合逻辑->逻辑运算
 always @(*) begin
@@ -51,6 +69,18 @@ always @(*) begin
     end
 end
 
+//组合逻辑—>移动运算
+always@(*)begin
+    if(rst)moveres = 0;
+    else begin
+        case(aluop_i)
+        `ALU_MFHI: moveres = HI;
+        `ALU_MFLO: moveres = LO;
+        `ALU_MOVZ: moveres = reg1_i;
+        `ALU_MOVN: moveres = reg1_i;
+        endcase
+    end
+end
 
 //组合逻辑->根据类型选择
 always @(*) begin
@@ -59,8 +89,27 @@ always @(*) begin
     case(alusel_i)
         `ALU_RES_LOGIC: wdata_o = logicout;
         `ALU_RES_SHIFT: wdata_o = shiftres;
+        `ALU_RES_MOVE: wdata_o = moveres;
     default: wdata_o = 0;
     endcase
+end
+
+//如果是MTHI、MTLO指令，需要给出whilo_o,hi_o,lo_i
+always@(*)begin
+    if(rst) {whilo_o,hi_o,lo_o} = 0;
+    else begin
+        {whilo_o,hi_o,lo_o} = 0;
+        if(aluop_i==`ALU_MTHI) begin
+            whilo_o = 1;
+            hi_o = reg1_i;
+            lo_o = LO;
+        end
+        if(aluop_i==`ALU_MTLO) begin
+            whilo_o = 1;
+            hi_o = HI;
+            lo_o = reg1_i;
+        end
+    end
 end
 
 endmodule // ex

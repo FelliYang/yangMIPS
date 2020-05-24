@@ -163,6 +163,54 @@ always @(*) begin
                             InstValid = 1;
                         end
                     end
+                    //移动指令
+                    `FUC_MOVZ:begin
+                        wreg_o = (reg2_o==0)? 1: 0;
+                        alusel_o = `ALU_RES_MOVE;
+                        aluop_o =  `ALU_MOVZ;
+                        reg1_read_o = 1;
+                        reg2_read_o = 1;
+                        InstValid = 1;
+                    end
+                    `FUC_MOVN:begin
+                        wreg_o = (reg2_o!=0)?1:0;
+                        alusel_o = `ALU_RES_MOVE;
+                        aluop_o = `ALU_MOVN;
+                        reg1_read_o = 1;
+                        reg2_read_o = 1;
+                        InstValid = 1;
+                    end
+                    `FUC_MFHI:begin
+                        wreg_o = 1;
+                        alusel_o = `ALU_RES_MOVE;
+                        aluop_o =  `ALU_MFHI;
+                        reg1_read_o = 0;
+                        reg2_read_o = 0;
+                        InstValid = 1;
+                    end
+                    `FUC_MFLO:begin
+                        wreg_o = 1;
+                        alusel_o = `ALU_RES_MOVE;
+                        aluop_o =  `ALU_MFLO;
+                        reg1_read_o = 0;
+                        reg2_read_o = 0;
+                        InstValid = 1;
+                    end
+                    `FUC_MTHI:begin
+                        wreg_o = 0;
+                        aluop_o =`ALU_MTHI;
+                        reg1_read_o = 1;
+                        reg2_read_o = 0;
+                        InstValid = 1;
+                    end
+                    `FUC_MTLO:begin
+                        wreg_o = 0;
+                        aluop_o =`ALU_MTLO;
+                        reg1_read_o = 1;
+                        reg2_read_o = 0;
+                        InstValid = 1;
+                    end
+                    
                 default: InstValid = 0; //未定义指令
                 
                 endcase
@@ -203,7 +251,7 @@ always @(*) begin
                 aluop_o = `ALU_OR;
                 reg1_read_o = 1; //只需要读一个寄存器
                 reg2_read_o = 0;
-                imm = {inst_i[15:0],16'h0}; //逻辑扩展
+                imm = {inst_i[15:0],16'h0};
                 wd_o = rt; //目的寄存器为rt
                 InstValid = 1;
             end
@@ -222,9 +270,9 @@ always @(*) begin
     if(rst==1) reg1_o = 0;
     else begin
         if(reg1_read_o) begin
-            if(ex_wreg_i && ex_wd_i==reg1_addr_o) 
+            if(ex_wreg_i && ex_wd_i==reg1_addr_o && ex_wd_i != 0) 
                 reg1_o = ex_wdata_i;
-            else if(mem_wreg_i && mem_wd_i==reg1_addr_o)
+            else if(mem_wreg_i && mem_wd_i==reg1_addr_o && mem_wd_i != 0)
                 reg1_o = mem_wdata_i;
             else reg1_o = reg1_data_i;
         end
@@ -236,9 +284,9 @@ always @(*) begin
     if(rst) reg2_o = 0;
     else begin
         if(reg2_read_o) begin
-            if(ex_wreg_i && ex_wd_i==reg2_addr_o) 
+            if(ex_wreg_i && ex_wd_i==reg2_addr_o && ex_wd_i != 0) 
                 reg2_o = ex_wdata_i;
-            else if(mem_wreg_i && mem_wd_i==reg2_addr_o)
+            else if(mem_wreg_i && mem_wd_i==reg2_addr_o && mem_wd_i != 0)
                 reg2_o = mem_wdata_i;
             else reg2_o = reg2_data_i;
         end
