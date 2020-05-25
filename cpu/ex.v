@@ -23,7 +23,10 @@ module ex(
     output reg     wreg_o,
     //->HILO寄存器
     output reg  whilo_o,
-    output reg [31:0] hi_o,lo_o
+    output reg [31:0] hi_o,lo_o,
+
+    //流水线暂停请求
+    output reg stallreq_from_ex
 
 );
 reg [31:0] logicout; //逻辑运算

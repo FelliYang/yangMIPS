@@ -1,7 +1,7 @@
 module id_ex(
     input clk,
     input rst,
-
+    input [5:0] stall,
     //译码阶段的结果
     input [31:0] id_reg1,
     input [31:0] id_reg2,
@@ -20,15 +20,16 @@ module id_ex(
 );
 
 always @(posedge clk ) begin
-    if(rst == 1) {ex_reg1, ex_reg2, ex_wd, ex_wreg , ex_alusel, ex_aluop} <= 0;
-    else begin
+    if(rst) {ex_reg1, ex_reg2, ex_wd, ex_wreg , ex_alusel, ex_aluop} <= 0;
+    else if (!stall[2])begin
         ex_reg1 <= id_reg1;
         ex_reg2 <= id_reg2;
         ex_wd <= id_wd;
         ex_wreg <= id_wreg;
         ex_alusel <= id_alusel;
         ex_aluop <= id_aluop;
-    end
+    end else if(stall[2] && !stall[3]) 
+        {ex_reg1, ex_reg2, ex_wd,ex_wreg, ex_alusel, ex_aluop} <= 0;
 end
 
 endmodule // id_ex

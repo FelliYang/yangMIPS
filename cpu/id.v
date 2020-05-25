@@ -30,7 +30,10 @@ module id(
     output reg[4:0]                wd_o, //目的寄存器地址
     output reg                     wreg_o, //指令是否需要写入目的寄存器
     output reg[`RegBus]            reg1_o, //指令源操作数1
-    output reg[`RegBus]            reg2_o //指令源操作数2
+    output reg[`RegBus]            reg2_o, //指令源操作数2
+
+    //流水线暂停请求
+    output reg                  stallreq_from_id
 
 );
 

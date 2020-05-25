@@ -1,25 +1,24 @@
 `include "defines.v"
 module if_id(
-    input wire                  clk,
-    input wire                  rst,
-    
+    input                clk,
+    input                rst,
+    input [5:0]         stall,
     //取指阶段的结果
-    input wire[`InstAddrBus]    if_pc,
-    input wire[`InstBus]        if_inst,
+    input  [31:0]       if_pc,
+    input [31:0]        if_inst,
 
     //送到译码阶段的信息
-    output reg[`InstAddrBus]    id_pc,
-    output reg[`InstBus]        id_inst
+    output reg[31:0]    id_pc,
+    output reg[31:0]    id_inst
 );
 
 always @(posedge clk) begin
-    if(rst == `RstEnable) begin
-        id_pc <= `ZeroWord;
-        id_inst <= `ZeroWord;
-    end else begin
-        id_pc <= if_pc;
-        id_inst <= if_inst;
-    end
+    if(rst)
+        {id_pc, id_inst} <= 0;
+    else if(!stall[1])begin
+        {id_pc, id_inst} <= {if_pc, if_inst};
+    end else if(stall[1] && !stall[2])
+        {id_pc, id_inst} <= 0;
 end
 
 endmodule // if_id

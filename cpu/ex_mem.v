@@ -1,7 +1,7 @@
 module ex_mem(
     input clk,
     input rst,
-
+    input [5:0] stall,
     //执行级的结果
     input [4:0]         ex_wd,
     input [31:0]        ex_wdata,
@@ -19,14 +19,15 @@ module ex_mem(
 
 always @(posedge clk) begin
     if(rst) {mem_wd, mem_wdata,mem_wreg, mem_whilo, mem_hi, mem_lo} <= 0;
-    else begin
+    else if(!stall[3])begin
         mem_wd <= ex_wd;
         mem_wdata <= ex_wdata;
         mem_wreg <= ex_wreg;
         mem_whilo <= ex_whilo;
         mem_hi <= ex_hi;
         mem_lo <= ex_lo;
-    end
+    end else if(stall[3] && !stall[4]) 
+        {mem_wd,mem_wdata, mem_wreg, mem_whilo, mem_hi, mem_lo} <= 0;
 end
 
 

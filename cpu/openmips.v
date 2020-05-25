@@ -62,21 +62,28 @@ wire        wb_wreg_i;
 wire        wb_whilo_i;
 wire [31:0]  wb_hi_i, wb_lo_i;
 
+//流水线暂停控制信号
+wire stallreq_from_id, stallreq_from_ex;
+wire [5:0] stall;
+
 //pc_reg实例化
 pc_reg pc_reg0(
-    .clk(clk), .rst(rst), .pc(pc), .ce(rom_ce_o)
+    .clk(clk), .rst(rst), .pc(pc), .ce(rom_ce_o) , .stall(stall)
 );
 assign rom_addr_o = pc;
 
 //IF/ID模块实例化
 if_id if_id0(
-    .clk(clk), .rst(rst), .if_pc(pc),
-    .if_inst(rom_data_i), .id_pc(id_pc_i), .id_inst(id_inst_i)
+    .clk(clk), .rst(rst), .stall(stall),
+    .if_pc(pc), .if_inst(rom_data_i),
+     .id_pc(id_pc_i), .id_inst(id_inst_i)
+    
 );
 
 //译码阶段ID模块实例化
 id id0(
-    .rst(rst), .pc_i(id_pc_i), .inst_i(id_inst_i),
+    .rst(rst),  
+    .pc_i(id_pc_i), .inst_i(id_inst_i),
     
     //送到regfile的信息
     .reg1_addr_o(reg1_addr), .reg2_addr_o(reg2_addr),
@@ -93,7 +100,10 @@ id id0(
     
     //送到ID/EX模块的信息
     .aluop_o(id_aluop_o), .alusel_o(id_alusel_o),
-    .wd_o(id_wd_o), .wreg_o(id_wreg_o), .reg1_o(id_reg1_o), .reg2_o(id_reg2_o)
+    .wd_o(id_wd_o), .wreg_o(id_wreg_o), .reg1_o(id_reg1_o), .reg2_o(id_reg2_o),
+
+    //流水线暂停请求
+    .stallreq_from_id(stallreq_from_id)
     
 );
 
@@ -110,7 +120,7 @@ regfile regfile0(
 
 //ID/EX模块实例化
 id_ex id_ex0(
-    .clk(clk), .rst(rst),
+    .clk(clk), .rst(rst), .stall(stall),
 
     //从译码阶段ID模块传过来的信息
     .id_reg1(id_reg1_o), .id_reg2(id_reg2_o),
@@ -141,13 +151,15 @@ ex ex0(
     //输出到EX/MEM模块的信息->通用寄存器
     .wdata_o(ex_wdata_o), .wd_o(ex_wd_o), .wreg_o(ex_wreg_o),
     //->HI/LO寄存器
-    .whilo_o(ex_whilo_o), .hi_o(ex_hi_o), .lo_o(ex_lo_o)
+    .whilo_o(ex_whilo_o), .hi_o(ex_hi_o), .lo_o(ex_lo_o),
+
+    //流水线暂停请求
+    .stallreq_from_ex(stallreq_from_ex)
 );
 
 //EX/MEM模块实例化
 ex_mem ex_mem0(
-    .clk(clk),
-    .rst(rst),
+    .clk(clk), .rst(rst), .stall(stall),
 
     //从执行阶段EX模块传递过来的信息
     .ex_wdata(ex_wdata_o), .ex_wd(ex_wd_o), .ex_wreg(ex_wreg_o),
@@ -173,7 +185,7 @@ mem mem0(
 
 //MEM/WB模块实例化
 mem_wb mem_wb0(
-    .clk(clk), .rst(rst),
+    .clk(clk), .rst(rst), .stall(stall),
 
     //来自访存阶段mem模块的信息
     .mem_wdata(mem_wdata_o), .mem_wd(mem_wd_o), .mem_wreg(mem_wreg_o),
@@ -193,6 +205,13 @@ hilo_reg hilo_reg0(
 
     //送到执行阶段的信息
     .hi_o(hi), .lo_o(lo)
+);
+
+//流水线控制暂停模块
+ctrl ctrl0(
+    .rst(rst),
+    .stallreq_from_id(stallreq_from_id), .stallreq_from_ex(stallreq_from_ex),
+    .stall(stall)
 );
 
 endmodule // openmips
