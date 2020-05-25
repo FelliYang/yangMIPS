@@ -36,7 +36,7 @@
 `define OP_LUI          6'b001111
 `define OP_PREF         6'b110011	
 
-//指令子类型->使用function域判断
+/*指令子类型->使用function域判断*/
 //移位指令
 `define FUC_SLL         6'b000000
 `define FUC_SLLV        6'b000100
@@ -56,9 +56,16 @@
 `define FUC_MTHI		6'b010001
 `define FUC_MFLO		6'b010010
 `define FUC_MTLO		6'b010011
+//算数指令
+`define FUC_ADD			6'b100000
+`define FUC_ADDU		6'b100001
+`define FUC_SUB			6'b100010
+`define FUC_SUBU		6'b100011
+`define FUC_SLT			6'b101010
+`define FUC_SLTU		6'b101011
 
 
-//aluop ->运算子类型	前3位表示alusel运算类型 后5位表示子类型编号
+/*aluop ->运算子类型	前3位表示alusel运算类型 后5位表示子类型编号*/
 `define ALU_AND		   	8'b001_00000
 `define ALU_OR	    	8'b001_00001
 `define ALU_XOR		  	8'b001_00010
@@ -83,11 +90,21 @@
 `define ALU_MFLO		8'b011_00011
 `define ALU_MTHI		8'b011_00100
 `define ALU_MTLO		8'b011_00101
- 
-//alusel -> 运算类型
-`define ALU_RES_LOGIC   3'b001
+
+//简单运算指令
+`define ALU_ADD			8'b100_00000
+`define ALU_ADDU		8'b100_00001
+`define ALU_SUB			8'b100_00010
+`define ALU_SUBU		8'b100_00011	
+`define ALU_SLT			8'b100_00100
+`define ALU_SLTU		8'b100_00101
+
+/*alusel -> 运算类型*/
 `define ALU_RES_NOP     3'b000
+`define ALU_RES_LOGIC   3'b001
 `define ALU_RES_SHIFT 	3'b010
 `define ALU_RES_MOVE	3'b011
+`define ALU_RES_ARITH	3'b100 //算数指令
+
 
 `endif

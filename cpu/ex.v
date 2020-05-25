@@ -29,7 +29,32 @@ module ex(
 reg [31:0] logicout; //逻辑运算
 reg [31:0] shiftres; //移位运算 
 reg [31:0] moveres; //移动运算
+reg [31:0] arithres; //算数运算
 reg [31:0] HI, LO; //保存寄存器的值
+
+
+//标志位
+wire        ov_sum; //加法溢出位
+wire [31:0]  reg2_i_mux; //操作数2根据指令需要，转换成相反数的补码表示
+wire [31:0]  result_sum; //加法结果
+wire        reg1_lt_reg2;
+
+//算数运算
+//所有减法运算，需要对操作数2取反+1，得到相反数的补码表示
+assign reg2_i_mux = ((aluop_i == `ALU_SUB) ||
+                    (aluop_i == `ALU_SUBU) ||
+                    (aluop_i == `ALU_SLT)) ?
+                    (~reg2_i) +1 : reg2_i;
+assign result_sum = reg1_i + reg2_i_mux;
+//指令add addi sub需要判断溢出，此时 执行的是reg1 和 reg2_i_mux的加法
+assign ov_sum = ((!reg1_i[31]) && (!reg2_i_mux[31]) && result_sum[31]) ||
+                    ((reg1_i[31]) && (reg2_i_mux[31]) && !result_sum[31]);
+//SLT和SLTU指令
+assign reg1_lt_reg2 = ((aluop_i == `ALU_SLT)) ?
+         (  (reg1_i[31]&&!reg2_i[31]) || //三种reg1操作数小于reg2操作数的情况
+             (!reg1_i[31]&&!reg2_i[31] && result_sum[31]) || 
+             (reg1_i[31] && reg2_i[31] && result_sum[31])   ):
+             (reg1_i < reg2_i); //无符号数直接使用比较运算符
 
 //HI/LO数据相关问题
 always@(*)begin
@@ -73,6 +98,7 @@ end
 always@(*)begin
     if(rst)moveres = 0;
     else begin
+        moveres = 0;
         case(aluop_i)
         `ALU_MFHI: moveres = HI;
         `ALU_MFLO: moveres = LO;
@@ -82,14 +108,31 @@ always@(*)begin
     end
 end
 
+//TODO 组合逻辑->简单算数运算->增加六条指令
+always@(*)begin
+    if(rst) arithres = 0;
+    else begin
+        arithres = 0;
+        case(aluop_i)
+        `ALU_AND, `ALU_ADDU, `ALU_SUB, `ALU_SUBU: arithres = result_sum;
+        `ALU_SLT, `ALU_SLTU: arithres = reg1_lt_reg2;
+        endcase
+    end
+end
+
+//FIXME 增加addi指令溢出
 //组合逻辑->根据类型选择
 always @(*) begin
     wd_o = wd_i;
-    wreg_o = wreg_i;
+    if(((aluop_i==`ALU_ADD) /*|| (aluop_i==`ALU_ADDI)*/ || (aluop_i==`ALU_SUB)) && ov_sum==1)
+        wreg_o = 0; //溢出不改变寄存器
+    else wreg_o = wreg_i;
+
     case(alusel_i)
         `ALU_RES_LOGIC: wdata_o = logicout;
         `ALU_RES_SHIFT: wdata_o = shiftres;
         `ALU_RES_MOVE: wdata_o = moveres;
+        `ALU_RES_ARITH: wdata_o = arithres;
     default: wdata_o = 0;
     endcase
 end

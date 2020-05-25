@@ -210,6 +210,54 @@ always @(*) begin
                         reg2_read_o = 0;
                         InstValid = 1;
                     end
+                    `FUC_ADD:begin
+                        wreg_o = 1;
+                        aluop_o = `ALU_ADD;
+                        alusel_o = `ALU_RES_ARITH;
+                        reg1_read_o = 1;
+                        reg2_read_o = 1;
+                        InstValid = 1;
+                    end
+                    `FUC_ADDU:begin
+                        wreg_o = 1;
+                        aluop_o = `ALU_ADDU;
+                        alusel_o = `ALU_RES_ARITH;
+                        reg1_read_o = 1;
+                        reg2_read_o = 1;
+                        InstValid = 1;
+                    end
+                    `FUC_SUB:begin
+                        wreg_o = 1;
+                        aluop_o = `ALU_SUB;
+                        alusel_o = `ALU_RES_ARITH;
+                        reg1_read_o = 1;
+                        reg2_read_o = 1;
+                        InstValid = 1;
+                    end
+                    `FUC_SUBU:begin
+                        wreg_o = 1;
+                        aluop_o = `ALU_SUBU;
+                        alusel_o = `ALU_RES_ARITH;
+                        reg1_read_o = 1;
+                        reg2_read_o = 1;
+                        InstValid = 1;
+                    end
+                    `FUC_SLT:begin
+                        wreg_o = 1;
+                        aluop_o = `ALU_SLT;
+                        alusel_o = `ALU_RES_ARITH;
+                        reg1_read_o = 1;
+                        reg2_read_o = 1;
+                        InstValid = 1;
+                    end
+                    `FUC_SLTU:begin
+                        wreg_o = 1;
+                        aluop_o = `ALU_SLTU;
+                        alusel_o = `ALU_RES_ARITH;
+                        reg1_read_o = 1;
+                        reg2_read_o = 1;
+                        InstValid = 1;
+                    end
                     
                 default: InstValid = 0; //未定义指令
                 
