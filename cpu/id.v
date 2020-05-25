@@ -198,6 +198,7 @@ always @(*) begin
                     end
                     `FUC_MTHI:begin
                         wreg_o = 0;
+                        alusel_o = `ALU_RES_MOVE;
                         aluop_o =`ALU_MTHI;
                         reg1_read_o = 1;
                         reg2_read_o = 0;
@@ -205,6 +206,7 @@ always @(*) begin
                     end
                     `FUC_MTLO:begin
                         wreg_o = 0;
+                        alusel_o = `ALU_RES_MOVE;
                         aluop_o =`ALU_MTLO;
                         reg1_read_o = 1;
                         reg2_read_o = 0;
@@ -266,7 +268,7 @@ always @(*) begin
             `OP_ANDI:begin
                 wreg_o = 1;
                 alusel_o = `ALU_RES_LOGIC;
-                aluop_o = `ALU_AND;
+                aluop_o = `ALU_ANDI;
                 reg1_read_o = 1; //只需要读一个寄存器
                 reg2_read_o = 0;
                 imm = {16'h0, inst_i[15:0]}; //逻辑扩展
@@ -276,7 +278,7 @@ always @(*) begin
             `OP_ORI:begin //ori 指令
                 wreg_o = 1;
                 alusel_o = `ALU_RES_LOGIC;
-                aluop_o = `ALU_OR;
+                aluop_o = `ALU_ORI;
                 reg1_read_o = 1; //只需要读一个寄存器
                 reg2_read_o = 0;
                 imm = {16'h0, inst_i[15:0]}; //逻辑扩展
@@ -286,7 +288,7 @@ always @(*) begin
             `OP_XORI:begin
                 wreg_o = 1;
                 alusel_o = `ALU_RES_LOGIC;
-                aluop_o = `ALU_XOR;
+                aluop_o = `ALU_XORI;
                 reg1_read_o = 1; //只需要读一个寄存器
                 reg2_read_o = 0;
                 imm = {16'h0, inst_i[15:0]}; //逻辑扩展
@@ -296,7 +298,7 @@ always @(*) begin
             `OP_LUI:begin
                 wreg_o = 1;
                 alusel_o = `ALU_RES_LOGIC;
-                aluop_o = `ALU_OR;
+                aluop_o = `ALU_LUI;
                 reg1_read_o = 1; //只需要读一个寄存器
                 reg2_read_o = 0;
                 imm = {inst_i[15:0],16'h0};
@@ -306,6 +308,46 @@ always @(*) begin
             `OP_PREF:begin
                 alusel_o = `ALU_RES_NOP;
                 aluop_o = `ALU_NOP;
+                InstValid = 1;
+            end
+            `OP_ADDI:begin
+                wreg_o = 1;;
+                alusel_o = `ALU_RES_ARITH;
+                aluop_o = `ALU_ADDI; //addi 使用alu类别
+                reg1_read_o = 1;
+                reg2_read_o = 0;
+                imm = {{16{inst_i[15]}}, inst_i[15:0]}; //符号扩展
+                wd_o = rt;
+                InstValid = 1;
+            end
+            `OP_ADDIU:begin
+                wreg_o = 1;
+                alusel_o = `ALU_RES_ARITH;
+                aluop_o = `ALU_ADDIU;
+                reg1_read_o = 1;
+                reg2_read_o = 0;
+                imm = {{16{inst_i[15]}}, inst_i[15:0]}; //符号扩展
+                wd_o = rt;
+                InstValid = 1;
+            end
+            `OP_SLTI:begin
+                wreg_o = 1;
+                alusel_o =  `ALU_RES_ARITH;
+                aluop_o = `ALU_SLTI;
+                reg1_read_o = 1;
+                reg2_read_o = 0;
+                imm = {{16{inst_i[15]}}, inst_i[15:0]}; //符号扩展
+                wd_o = rt;
+                InstValid = 1;
+            end
+            `OP_SLTIU:begin
+                wreg_o = 1;
+                alusel_o =  `ALU_RES_ARITH;
+                aluop_o = `ALU_SLTIU;
+                reg1_read_o = 1;
+                reg2_read_o = 0;
+                imm = {{16{inst_i[15]}}, inst_i[15:0]}; //符号扩展
+                wd_o = rt;
                 InstValid = 1;
             end
             default: InstValid = 0;

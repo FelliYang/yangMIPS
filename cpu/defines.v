@@ -35,6 +35,10 @@
 `define OP_XORI         6'b001110
 `define OP_LUI          6'b001111
 `define OP_PREF         6'b110011	
+`define OP_ADDI			6'b001000
+`define OP_ADDIU		6'b001001
+`define OP_SLTI			6'b001010
+`define OP_SLTIU		6'b001011
 
 /*指令子类型->使用function域判断*/
 //移位指令
@@ -98,6 +102,10 @@
 `define ALU_SUBU		8'b100_00011	
 `define ALU_SLT			8'b100_00100
 `define ALU_SLTU		8'b100_00101
+`define ALU_ADDI		8'b100_00110
+`define ALU_ADDIU		8'b100_00111
+`define ALU_SLTI		8'b100_01000
+`define ALU_SLTIU		8'b100_01001
 
 /*alusel -> 运算类型*/
 `define ALU_RES_NOP     3'b000

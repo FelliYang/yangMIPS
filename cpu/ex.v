@@ -43,7 +43,8 @@ wire        reg1_lt_reg2;
 //所有减法运算，需要对操作数2取反+1，得到相反数的补码表示
 assign reg2_i_mux = ((aluop_i == `ALU_SUB) ||
                     (aluop_i == `ALU_SUBU) ||
-                    (aluop_i == `ALU_SLT)) ?
+                    (aluop_i == `ALU_SLT) ||
+                    (aluop_i == `ALU_SLTI)) ?
                     (~reg2_i) +1 : reg2_i;
 assign result_sum = reg1_i + reg2_i_mux;
 //指令add addi sub需要判断溢出，此时 执行的是reg1 和 reg2_i_mux的加法
@@ -72,9 +73,9 @@ always @(*) begin
     end else begin
         logicout = 0;
         case(aluop_i)
-            `ALU_OR: logicout = reg1_i | reg2_i;
-            `ALU_AND: logicout = reg1_i & reg2_i;
-            `ALU_XOR: logicout = reg1_i ^ reg2_i;
+            `ALU_OR, `ALU_ORI, `ALU_LUI: logicout = reg1_i | reg2_i;
+            `ALU_AND, `ALU_ANDI: logicout = reg1_i & reg2_i;
+            `ALU_XOR, `ALU_XORI: logicout = reg1_i ^ reg2_i;
             `ALU_NOR: logicout = ~(reg1_i | reg2_i);
         endcase
     end
@@ -108,23 +109,21 @@ always@(*)begin
     end
 end
 
-//TODO 组合逻辑->简单算数运算->增加六条指令
 always@(*)begin
     if(rst) arithres = 0;
     else begin
         arithres = 0;
         case(aluop_i)
-        `ALU_AND, `ALU_ADDU, `ALU_SUB, `ALU_SUBU: arithres = result_sum;
-        `ALU_SLT, `ALU_SLTU: arithres = reg1_lt_reg2;
+        `ALU_AND, `ALU_ADDU, `ALU_ADDI, `ALU_ADDIU,`ALU_SUB, `ALU_SUBU: arithres = result_sum;
+        `ALU_SLT, `ALU_SLTU, `ALU_SLTI, `ALU_SLTIU: arithres = reg1_lt_reg2;
         endcase
     end
 end
 
-//FIXME 增加addi指令溢出
 //组合逻辑->根据类型选择
 always @(*) begin
     wd_o = wd_i;
-    if(((aluop_i==`ALU_ADD) /*|| (aluop_i==`ALU_ADDI)*/ || (aluop_i==`ALU_SUB)) && ov_sum==1)
+    if(((aluop_i==`ALU_ADD) || (aluop_i==`ALU_ADDI) || (aluop_i==`ALU_SUB)) && ov_sum==1)
         wreg_o = 0; //溢出不改变寄存器
     else wreg_o = wreg_i;
 
