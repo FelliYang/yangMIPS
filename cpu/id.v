@@ -260,6 +260,22 @@ always @(*) begin
                         reg2_read_o = 1;
                         InstValid = 1;
                     end
+                    `FUC_MULT:begin
+                        wreg_o = 0;
+                        aluop_o = `ALU_MULT;
+                        alusel_o = `ALU_RES_ARITH;
+                        reg1_read_o = 1;
+                        reg2_read_o = 1;
+                        InstValid = 1;
+                    end
+                    `FUC_MULTU:begin
+                        wreg_o = 0;
+                        aluop_o = `ALU_MULTU;
+                        alusel_o = `ALU_RES_ARITH;
+                        reg1_read_o = 1;
+                        reg2_read_o = 1;
+                        InstValid = 1;
+                    end
                     
                 default: InstValid = 0; //未定义指令
                 
@@ -282,6 +298,14 @@ always @(*) begin
                         aluop_o = `ALU_CLO;
                         reg1_read_o = 1; //只需要读一个寄存器
                         reg2_read_o = 0;
+                        InstValid = 1;
+                    end
+                    `FUC_MUL:begin
+                        wreg_o = 1;
+                        alusel_o = `ALU_RES_ARITH;
+                        aluop_o = `ALU_MUL;
+                        reg1_read_o = 1; 
+                        reg2_read_o = 1;
                         InstValid = 1;
                     end
                 endcase

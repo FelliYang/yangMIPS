@@ -35,9 +35,16 @@ reg [31:0] HI, LO; //保存寄存器的值
 
 //标志位
 wire        ov_sum; //加法溢出位
+
+//局部变量
 wire [31:0]  reg2_i_mux; //操作数2根据指令需要，转换成相反数的补码表示
 wire [31:0]  result_sum; //加法结果
 wire        reg1_lt_reg2;
+wire [31:0] opdata1_mult;  //被乘数
+wire [31:0] opdata2_mult; //乘数
+wire [63:0] hilo_temp; //零时保存乘法结果
+reg [63:0] multres;
+
 
 //算数运算
 //所有减法运算，需要对操作数2取反+1，得到相反数的补码表示
@@ -56,6 +63,18 @@ assign reg1_lt_reg2 = ((aluop_i == `ALU_SLT)) ?
              (!reg1_i[31]&&!reg2_i[31] && result_sum[31]) || 
              (reg1_i[31] && reg2_i[31] && result_sum[31])   ):
              (reg1_i < reg2_i); //无符号数直接使用比较运算符
+
+/*乘法运算*/
+//有符号数的乘法过程中先取两个操作数绝对值，后期修正
+assign opdata1_mult = (((aluop_i==`ALU_MUL) || (aluop_i==`ALU_MULT)) && reg1_i[31]==1) ? (~reg1_i+1) : reg1_i;
+assign opdata2_mult = (((aluop_i==`ALU_MUL) || (aluop_i==`ALU_MULT)) && reg2_i[31]==1) ? (~reg2_i+1) : reg2_i;
+assign hilo_temp = opdata1_mult * opdata2_mult;
+//组合逻辑->修正乘法结果
+always @(*) begin
+    if(rst) multres = 0;
+    else if(((aluop_i==`ALU_MUL) || (aluop_i==`ALU_MULT)) && (reg1_i[31] ^ reg2_i[31]) ) multres = ~hilo_temp + 1;
+    else multres = hilo_temp;
+end
 
 //HI/LO数据相关问题
 always@(*)begin
@@ -132,6 +151,7 @@ always@(*)begin
                                 !reg1_i[11] ? 20 : !reg1_i[10] ? 21 : !reg1_i[9] ? 22 : !reg1_i[8] ? 23 :
                                 !reg1_i[7] ? 24 : !reg1_i[6] ? 25 : !reg1_i[5] ? 26 : !reg1_i[4] ? 27 :
                                 !reg1_i[3] ? 28 : !reg1_i[2] ? 29 : !reg1_i[1] ? 30 : !reg1_i[0] ? 31 : 32;
+        `ALU_MUL: arithres = multres[31:0];
         endcase
     end
 end
@@ -153,20 +173,28 @@ always @(*) begin
 end
 
 //如果是MTHI、MTLO指令，需要给出whilo_o,hi_o,lo_i
+//如果是mult、multu指令，也需要传递hilo的写入信息
 always@(*)begin
     if(rst) {whilo_o,hi_o,lo_o} = 0;
     else begin
         {whilo_o,hi_o,lo_o} = 0;
-        if(aluop_i==`ALU_MTHI) begin
-            whilo_o = 1;
-            hi_o = reg1_i;
-            lo_o = LO;
-        end
-        if(aluop_i==`ALU_MTLO) begin
-            whilo_o = 1;
-            hi_o = HI;
-            lo_o = reg1_i;
-        end
+        case(aluop_i)
+            `ALU_MTHI: begin
+                whilo_o = 1;
+                hi_o = reg1_i;
+                lo_o = LO;
+            end
+            `ALU_MTLO: begin
+                whilo_o = 1;
+                hi_o = HI;
+                lo_o = reg1_i; 
+            end
+            `ALU_MULT, `ALU_MULTU: begin
+                whilo_o = 1;
+                {hi_o, lo_o} = multres;
+            end
+        endcase
+        
     end
 end
 

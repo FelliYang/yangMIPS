@@ -68,8 +68,12 @@
 `define FUC_SUBU		6'b100011
 `define FUC_SLT			6'b101010
 `define FUC_SLTU		6'b101011
+`define FUC_MULT		6'b011000
+`define FUC_MULTU		6'b011001
+//special2->
 `define FUC_CLZ			6'b100000
 `define FUC_CLO			6'b100001
+`define FUC_MUL			6'b000010
 
 
 /*aluop ->运算子类型	前3位表示alusel运算类型 后5位表示子类型编号*/
@@ -111,6 +115,9 @@
 `define ALU_SLTIU		8'b100_01001
 `define ALU_CLZ			8'b100_01010
 `define ALU_CLO			8'b100_01011
+`define ALU_MUL			8'b100_01100
+`define ALU_MULT		8'b100_01101
+`define ALU_MULTU		8'b100_01110
 
 /*alusel -> 运算类型*/
 `define ALU_RES_NOP     3'b000
