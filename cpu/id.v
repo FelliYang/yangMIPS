@@ -265,6 +265,27 @@ always @(*) begin
                 
                 endcase
             end
+            //special2类
+            `OP_SPECIAL2:begin
+                case(func) 
+                    `FUC_CLZ:begin
+                        wreg_o = 1;
+                        alusel_o = `ALU_RES_ARITH;
+                        aluop_o = `ALU_CLZ;
+                        reg1_read_o = 1; //只需要读一个寄存器
+                        reg2_read_o = 0;
+                        InstValid = 1;
+                    end
+                    `FUC_CLO:begin
+                        wreg_o = 1;
+                        alusel_o = `ALU_RES_ARITH;
+                        aluop_o = `ALU_CLO;
+                        reg1_read_o = 1; //只需要读一个寄存器
+                        reg2_read_o = 0;
+                        InstValid = 1;
+                    end
+                endcase
+            end
             `OP_ANDI:begin
                 wreg_o = 1;
                 alusel_o = `ALU_RES_LOGIC;

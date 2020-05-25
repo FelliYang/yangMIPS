@@ -30,6 +30,7 @@
 
 //指令大类型->使用op域判断
 `define OP_SPECIAL      6'b000000
+`define OP_SPECIAL2		6'b011100
 `define OP_ANDI         6'b001100
 `define OP_ORI          6'b001101
 `define OP_XORI         6'b001110
@@ -67,6 +68,8 @@
 `define FUC_SUBU		6'b100011
 `define FUC_SLT			6'b101010
 `define FUC_SLTU		6'b101011
+`define FUC_CLZ			6'b100000
+`define FUC_CLO			6'b100001
 
 
 /*aluop ->运算子类型	前3位表示alusel运算类型 后5位表示子类型编号*/
@@ -106,6 +109,8 @@
 `define ALU_ADDIU		8'b100_00111
 `define ALU_SLTI		8'b100_01000
 `define ALU_SLTIU		8'b100_01001
+`define ALU_CLZ			8'b100_01010
+`define ALU_CLO			8'b100_01011
 
 /*alusel -> 运算类型*/
 `define ALU_RES_NOP     3'b000

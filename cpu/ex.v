@@ -116,6 +116,22 @@ always@(*)begin
         case(aluop_i)
         `ALU_AND, `ALU_ADDU, `ALU_ADDI, `ALU_ADDIU,`ALU_SUB, `ALU_SUBU: arithres = result_sum;
         `ALU_SLT, `ALU_SLTU, `ALU_SLTI, `ALU_SLTIU: arithres = reg1_lt_reg2;
+        `ALU_CLZ: arithres =    reg1_i[31] ? 0 : reg1_i[30] ? 1 : reg1_i[29] ? 2 : reg1_i[28] ? 3 :
+                                reg1_i[27] ? 4 : reg1_i[26] ? 5 : reg1_i[25] ? 6 : reg1_i[24] ? 7 :
+                                reg1_i[23] ? 8 : reg1_i[22] ? 9 : reg1_i[21] ? 10 : reg1_i[20] ? 11 :
+                                reg1_i[19] ? 12 : reg1_i[18] ? 13 : reg1_i[17] ? 14 : reg1_i[16] ? 15 :
+                                reg1_i[15] ? 16 : reg1_i[14] ? 17 : reg1_i[13] ? 18 : reg1_i[12] ? 19 :
+                                reg1_i[11] ? 20 : reg1_i[10] ? 21 : reg1_i[9] ? 22 : reg1_i[8] ? 23 :
+                                reg1_i[7] ? 24 : reg1_i[6] ? 25 : reg1_i[5] ? 26 : reg1_i[4] ? 27 :
+                                reg1_i[3] ? 28 : reg1_i[2] ? 29 : reg1_i[1] ? 30 : reg1_i[0] ? 31 : 32;
+        `ALU_CLO: arithres =    !reg1_i[31] ? 0 : !reg1_i[30] ? 1 : !reg1_i[29] ? 2 : !reg1_i[28] ? 3 :
+                                !reg1_i[27] ? 4 : !reg1_i[26] ? 5 : !reg1_i[25] ? 6 : !reg1_i[24] ? 7 :
+                                !reg1_i[23] ? 8 : !reg1_i[22] ? 9 : !reg1_i[21] ? 10 : !reg1_i[20] ? 11 :
+                                !reg1_i[19] ? 12 : !reg1_i[18] ? 13 : !reg1_i[17] ? 14 : !reg1_i[16] ? 15 :
+                                !reg1_i[15] ? 16 : !reg1_i[14] ? 17 : !reg1_i[13] ? 18 : !reg1_i[12] ? 19 :
+                                !reg1_i[11] ? 20 : !reg1_i[10] ? 21 : !reg1_i[9] ? 22 : !reg1_i[8] ? 23 :
+                                !reg1_i[7] ? 24 : !reg1_i[6] ? 25 : !reg1_i[5] ? 26 : !reg1_i[4] ? 27 :
+                                !reg1_i[3] ? 28 : !reg1_i[2] ? 29 : !reg1_i[1] ? 30 : !reg1_i[0] ? 31 : 32;
         endcase
     end
 end
