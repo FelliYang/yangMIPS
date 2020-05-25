@@ -1,5 +1,5 @@
 `timescale  1ns/1ps
-module openmips_min_sopc_tb();
+module yangmips_min_sopc_tb();
     reg  CLOCK_50;
     reg     rst;
 
@@ -15,7 +15,7 @@ module openmips_min_sopc_tb();
     end
 
     //实例化
-    openmips_min_sopc openmips_min_sopc0(
+    yangmips_min_sopc yangmips_min_sopc0(
         .clk(CLOCK_50), .rst(rst)
     );
 endmodule // openmips_min_sopc

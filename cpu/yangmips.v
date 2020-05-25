@@ -1,4 +1,4 @@
-module openmips(
+module yangmips(
     input clk,
     input rst,
     input [31:0] rom_data_i, //从指存储器取得的指令

@@ -1,4 +1,4 @@
-module openmips_min_sopc(
+module yangmips_min_sopc(
     input clk,
     input rst
 );
@@ -8,7 +8,7 @@ wire [31:0] inst;
 wire        rom_ce;
 
 //实例化处理器 openMips
-openmips openmips0(
+yangmips yangmips0(
     .clk(clk), .rst(rst),
     .rom_addr_o(inst_addr), .rom_ce_o(rom_ce),
     .rom_data_i(inst)
