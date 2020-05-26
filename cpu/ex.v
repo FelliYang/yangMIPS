@@ -23,6 +23,15 @@ module ex(
     output reg [63:0] hilo_temp_o, //运算中间结果
     output reg [1:0] cnt_o, //周期计数
 
+    //与除法模块之间的连接信号
+    output reg signed_div_o, //有符号除法
+    output reg div_start_o, //开始除法运算
+    output reg [31:0]div_opdata1_o, //被除数
+    output reg [31:0]div_opdata2_o, //除数
+    input [63:0] div_result_i, //除法结果
+    input       div_ready_i, //除法运算完成
+
+
     //执行级的结果->通用寄存器
     output reg [4:0] wd_o,
     output reg [31:0] wdata_o,
@@ -54,6 +63,12 @@ wire [31:0] opdata2_mult; //乘数
 wire [63:0] hilo_temp; //零时保存乘法结果
 reg [63:0] multres;
 reg [63:0] hilo_temp1; //临时保存乘加或乘减结果
+
+//流水线暂停信号
+reg stallreq_from_mul, stallreq_from_div;
+always @(*) begin
+    stallreq_from_ex = stallreq_from_mul || stallreq_from_div;
+end
 
 
 //算数运算
@@ -188,21 +203,21 @@ always @(*) begin
     endcase
 end
 
-//MADD MADDU MSUB MSUBU指令
+//累乘指令MADD MADDU MSUB MSUBU
 always @(*) begin
-    if(rst) {hilo_temp_o, cnt_o, stallreq_from_ex, hilo_temp1} = 0;
+    if(rst) {hilo_temp_o, cnt_o, stallreq_from_mul, hilo_temp1} = 0;
     else begin
         case(aluop_i)
             `ALU_MADD, `ALU_MADDU: begin
                 if(cnt_i == 0) begin //执行阶段第一个周期
                     hilo_temp_o = multres;
                     cnt_o = 1;
-                    stallreq_from_ex = 1; //请求暂停流水线
+                    stallreq_from_mul = 1; //请求暂停流水线
                     hilo_temp1 = 0;
                 end else if(cnt_i == 1) begin //第二个周期
                     hilo_temp_o = 0;
                     cnt_o = 2;
-                    stallreq_from_ex = 0; //不再暂停流水线，时钟上升沿时一切正常
+                    stallreq_from_mul = 0; //不再暂停流水线，时钟上升沿时一切正常
                     hilo_temp1 = hilo_temp_i + {HI, LO};
                 end
             end
@@ -210,17 +225,50 @@ always @(*) begin
                 if(cnt_i == 0) begin //执行阶段第一个周期
                     hilo_temp_o = ~multres + 1; //减法，取被减数的补码
                     cnt_o = 1;
-                    stallreq_from_ex = 1; //请求暂停流水线
+                    stallreq_from_mul = 1; //请求暂停流水线
                     hilo_temp1 = 0;
                 end else if(cnt_i == 1) begin //第二个周期
                     hilo_temp_o = 0;
                     cnt_o = 2;
-                    stallreq_from_ex = 0; //不再暂停流水线，时钟上升沿时一切正常
+                    stallreq_from_mul = 0; //不再暂停流水线，时钟上升沿时一切正常
                     hilo_temp1 = hilo_temp_i + {HI, LO};
                 end
             end
-            default:{hilo_temp_o, cnt_o, stallreq_from_ex, hilo_temp1} = 0;
+            default:{hilo_temp_o, cnt_o, stallreq_from_mul, hilo_temp1} = 0;
         endcase
+    end
+end
+
+//除法指令 DIV DIVU
+always @(*) begin
+    if(rst) {stallreq_from_div, signed_div_o, div_start_o, div_opdata1_o, div_opdata2_o} = 0;
+    else begin
+        case(aluop_i)
+            `ALU_DIV:begin
+                if(div_ready_i==0) begin
+                    div_start_o = 1;
+                    signed_div_o = 1;
+                    div_opdata1_o = reg1_i;
+                    div_opdata2_o = reg2_i;    
+                    stallreq_from_div = 1;
+                end else begin
+                    {stallreq_from_div, signed_div_o, div_start_o, div_opdata1_o, div_opdata2_o} = 0;
+                end
+            end
+            `ALU_DIVU:begin
+                if(div_ready_i==0) begin
+                    div_start_o = 1;
+                    signed_div_o = 0;
+                    div_opdata1_o = reg1_i;
+                    div_opdata2_o = reg2_i;    
+                    stallreq_from_div = 1;
+                end else begin
+                    {stallreq_from_div, signed_div_o, div_start_o, div_opdata1_o, div_opdata2_o} = 0;
+                end
+            end
+        default:
+            {stallreq_from_div, signed_div_o, div_start_o, div_opdata1_o, div_opdata2_o} = 0;
+        endcase 
     end
 end
 
@@ -248,6 +296,10 @@ always@(*)begin
             `ALU_MADD,  `ALU_MADDU, `ALU_MSUB, `ALU_MSUBU:begin
                 whilo_o = 1;
                 {hi_o, lo_o} = hilo_temp1;
+            end
+            `ALU_DIV, `ALU_DIVU:begin
+                whilo_o = 1;
+                {hi_o, lo_o} = div_result_i;
             end
         endcase
         

@@ -43,6 +43,11 @@ wire [31:0] ex_hi_o, ex_lo_o;
 //EX模块与EM/MEM模块之间的临时信号
 wire [63:0] ex_hilo_temp_o, ex_hilo_temp_i;
 wire [1:0] ex_cnt_o, ex_cnt_i;
+//EX模块与除法DIV之间的信号
+wire ex_signed_div_o, ex_div_start_o;
+wire [31:0]ex_div_opdata1_o, ex_div_opdata2_o;
+wire [63:0] ex_div_result_i;
+wire        ex_div_ready_i;
 
 //连接EX/MEM模块的输出与访存阶段MEM模块的输入
 wire [31:0] mem_wdata_i;
@@ -160,8 +165,23 @@ ex ex0(
     .hilo_temp_i(ex_hilo_temp_i), .cnt_i(ex_cnt_i),
     .hilo_temp_o(ex_hilo_temp_o), .cnt_o(ex_cnt_o),
 
+    //连接EX和除法模块DIV
+    .signed_div_o(ex_signed_div_o), .div_start_o(ex_div_start_o),
+    .div_opdata1_o(ex_div_opdata1_o), .div_opdata2_o(ex_div_opdata2_o),
+    .div_result_i(ex_div_result_i), .div_ready_i(ex_div_ready_i),
+
     //流水线暂停请求
     .stallreq_from_ex(stallreq_from_ex)
+);
+
+//实例化除法DIV模块
+div div0(
+    .clk(clk), .rst(rst),
+
+    .signed_div_i(ex_signed_div_o), 
+    .opdata1_i(ex_div_opdata1_o), .opdata2_i(ex_div_opdata2_o),
+    .start_i(ex_div_start_o), .annul_i(1'b0),
+    .result_o(ex_div_result_i), .ready_o(ex_div_ready_i)
 );
 
 //EX/MEM模块实例化

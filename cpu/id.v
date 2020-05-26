@@ -279,6 +279,22 @@ always @(*) begin
                         reg2_read_o = 1;
                         InstValid = 1;
                     end
+                    `FUC_DIV:begin
+                        wreg_o = 0;
+                        aluop_o = `ALU_DIV;
+                        alusel_o = `ALU_RES_ARITH;
+                        reg1_read_o = 1;
+                        reg2_read_o = 1;
+                        InstValid = 1;
+                    end
+                    `FUC_DIVU:begin
+                        wreg_o = 0;
+                        aluop_o = `ALU_DIVU;
+                        alusel_o = `ALU_RES_ARITH;
+                        reg1_read_o = 1;
+                        reg2_read_o = 1;
+                        InstValid = 1;
+                    end
                     
                 default: InstValid = 0; //未定义指令
                 

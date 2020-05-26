@@ -11,7 +11,7 @@ module yangmips_min_sopc_tb();
     initial begin
         rst = 1;
         #195 rst = 0;
-        #1000 $stop;
+        #4000 $stop;
     end
 
     //实例化

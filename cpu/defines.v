@@ -70,6 +70,8 @@
 `define FUC_SLTU		6'b101011
 `define FUC_MULT		6'b011000
 `define FUC_MULTU		6'b011001
+`define FUC_DIV			6'b011010
+`define FUC_DIVU		6'b011011
 //special2->
 `define FUC_CLZ			6'b100000
 `define FUC_CLO			6'b100001
@@ -126,6 +128,8 @@
 `define ALU_MADDU		8'b100_10000
 `define ALU_MSUB		8'b100_10001
 `define ALU_MSUBU		8'b100_10010
+`define ALU_DIV			8'b100_10011
+`define ALU_DIVU		8'b100_10100
 
 /*alusel -> 运算类型*/
 `define ALU_RES_NOP     3'b000
