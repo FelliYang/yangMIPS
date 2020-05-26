@@ -74,6 +74,10 @@
 `define FUC_CLZ			6'b100000
 `define FUC_CLO			6'b100001
 `define FUC_MUL			6'b000010
+`define FUC_MADD		6'b000000
+`define FUC_MADDU		6'b000001
+`define FUC_MSUB		6'b000100
+`define FUC_MSUBU		6'b000101
 
 
 /*aluop ->运算子类型	前3位表示alusel运算类型 后5位表示子类型编号*/
@@ -118,6 +122,10 @@
 `define ALU_MUL			8'b100_01100
 `define ALU_MULT		8'b100_01101
 `define ALU_MULTU		8'b100_01110
+`define ALU_MADD		8'b100_01111
+`define ALU_MADDU		8'b100_10000
+`define ALU_MSUB		8'b100_10001
+`define ALU_MSUBU		8'b100_10010
 
 /*alusel -> 运算类型*/
 `define ALU_RES_NOP     3'b000

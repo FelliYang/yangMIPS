@@ -40,6 +40,9 @@ wire [4:0]  ex_wd_o;
 wire        ex_wreg_o;
 wire        ex_whilo_o;
 wire [31:0] ex_hi_o, ex_lo_o;
+//EX模块与EM/MEM模块之间的临时信号
+wire [63:0] ex_hilo_temp_o, ex_hilo_temp_i;
+wire [1:0] ex_cnt_o, ex_cnt_i;
 
 //连接EX/MEM模块的输出与访存阶段MEM模块的输入
 wire [31:0] mem_wdata_i;
@@ -152,6 +155,10 @@ ex ex0(
     .wdata_o(ex_wdata_o), .wd_o(ex_wd_o), .wreg_o(ex_wreg_o),
     //->HI/LO寄存器
     .whilo_o(ex_whilo_o), .hi_o(ex_hi_o), .lo_o(ex_lo_o),
+    
+    //连接EX/MEM模块的临时信号
+    .hilo_temp_i(ex_hilo_temp_i), .cnt_i(ex_cnt_i),
+    .hilo_temp_o(ex_hilo_temp_o), .cnt_o(ex_cnt_o),
 
     //流水线暂停请求
     .stallreq_from_ex(stallreq_from_ex)
@@ -164,6 +171,10 @@ ex_mem ex_mem0(
     //从执行阶段EX模块传递过来的信息
     .ex_wdata(ex_wdata_o), .ex_wd(ex_wd_o), .ex_wreg(ex_wreg_o),
     .ex_whilo(ex_whilo_o), .ex_hi(ex_hi_o), .ex_lo(ex_lo_o),
+
+    //连接EX模块的临时信号
+    .hilo_i(ex_hilo_temp_o), .cnt_i(ex_cnt_o),
+    .hilo_o(ex_hilo_temp_i), .cnt_o(ex_cnt_i),
 
     //输出到MEM级的信息
     .mem_wdata(mem_wdata_i), .mem_wd(mem_wd_i), .mem_wreg(mem_wreg_i),

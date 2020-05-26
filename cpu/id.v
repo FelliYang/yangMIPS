@@ -311,6 +311,39 @@ always @(*) begin
                         reg2_read_o = 1;
                         InstValid = 1;
                     end
+                    `FUC_MADD:begin
+                        wreg_o = 0;
+                        alusel_o = `ALU_RES_ARITH;
+                        aluop_o = `ALU_MADD;
+                        reg1_read_o = 1; 
+                        reg2_read_o = 1;
+                        InstValid = 1;
+                    end
+                    `FUC_MADDU:begin
+                        wreg_o = 0;
+                        alusel_o = `ALU_RES_ARITH;
+                        aluop_o = `ALU_MADDU;
+                        reg1_read_o = 1; 
+                        reg2_read_o = 1;
+                        InstValid = 1;
+                    end
+                    `FUC_MSUB:begin
+                        wreg_o = 0;
+                        alusel_o = `ALU_RES_ARITH;
+                        aluop_o = `ALU_MSUB;
+                        reg1_read_o = 1; 
+                        reg2_read_o = 1;
+                        InstValid = 1;
+                    end
+                    `FUC_MSUBU:begin
+                        wreg_o = 0;
+                        alusel_o = `ALU_RES_ARITH;
+                        aluop_o = `ALU_MSUBU;
+                        reg1_read_o = 1; 
+                        reg2_read_o = 1;
+                        InstValid = 1;
+                    end
+                    default:InstValid = 0;
                 endcase
             end
             `OP_ANDI:begin

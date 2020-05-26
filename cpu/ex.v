@@ -17,6 +17,12 @@ module ex(
     input mem_whilo_i,
     input [31:0] mem_hi_i,mem_lo_i,
 
+    //指令多周期执行时，来自EX/MEM模块的临时信号
+    input [63:0] hilo_temp_i,
+    input [1:0] cnt_i, 
+    output reg [63:0] hilo_temp_o, //运算中间结果
+    output reg [1:0] cnt_o, //周期计数
+
     //执行级的结果->通用寄存器
     output reg [4:0] wd_o,
     output reg [31:0] wdata_o,
@@ -47,6 +53,7 @@ wire [31:0] opdata1_mult;  //被乘数
 wire [31:0] opdata2_mult; //乘数
 wire [63:0] hilo_temp; //零时保存乘法结果
 reg [63:0] multres;
+reg [63:0] hilo_temp1; //临时保存乘加或乘减结果
 
 
 //算数运算
@@ -69,13 +76,19 @@ assign reg1_lt_reg2 = ((aluop_i == `ALU_SLT)) ?
 
 /*乘法运算*/
 //有符号数的乘法过程中先取两个操作数绝对值，后期修正
-assign opdata1_mult = (((aluop_i==`ALU_MUL) || (aluop_i==`ALU_MULT)) && reg1_i[31]==1) ? (~reg1_i+1) : reg1_i;
-assign opdata2_mult = (((aluop_i==`ALU_MUL) || (aluop_i==`ALU_MULT)) && reg2_i[31]==1) ? (~reg2_i+1) : reg2_i;
+assign opdata1_mult = ((aluop_i==`ALU_MUL || aluop_i==`ALU_MULT
+                    || aluop_i==`ALU_MADD || aluop_i==`ALU_MSUB) && 
+                    reg1_i[31]==1 ) ? (~reg1_i+1) : reg1_i;
+assign opdata2_mult = ((aluop_i==`ALU_MUL || aluop_i==`ALU_MULT
+                    || aluop_i==`ALU_MADD || aluop_i==`ALU_MSUB) &&
+                     reg2_i[31]==1) ? (~reg2_i+1) : reg2_i;
 assign hilo_temp = opdata1_mult * opdata2_mult;
 //组合逻辑->修正乘法结果
 always @(*) begin
     if(rst) multres = 0;
-    else if(((aluop_i==`ALU_MUL) || (aluop_i==`ALU_MULT)) && (reg1_i[31] ^ reg2_i[31]) ) multres = ~hilo_temp + 1;
+    else if((aluop_i==`ALU_MUL || aluop_i==`ALU_MULT
+         || aluop_i==`ALU_MADD || aluop_i==`ALU_MSUB) &&
+         (reg1_i[31] ^ reg2_i[31]) ) multres = ~hilo_temp + 1;
     else multres = hilo_temp;
 end
 
@@ -175,6 +188,42 @@ always @(*) begin
     endcase
 end
 
+//MADD MADDU MSUB MSUBU指令
+always @(*) begin
+    if(rst) {hilo_temp_o, cnt_o, stallreq_from_ex, hilo_temp1} = 0;
+    else begin
+        case(aluop_i)
+            `ALU_MADD, `ALU_MADDU: begin
+                if(cnt_i == 0) begin //执行阶段第一个周期
+                    hilo_temp_o = multres;
+                    cnt_o = 1;
+                    stallreq_from_ex = 1; //请求暂停流水线
+                    hilo_temp1 = 0;
+                end else if(cnt_i == 1) begin //第二个周期
+                    hilo_temp_o = 0;
+                    cnt_o = 2;
+                    stallreq_from_ex = 0; //不再暂停流水线，时钟上升沿时一切正常
+                    hilo_temp1 = hilo_temp_i + {HI, LO};
+                end
+            end
+            `ALU_MSUB, `ALU_MSUBU: begin
+                if(cnt_i == 0) begin //执行阶段第一个周期
+                    hilo_temp_o = ~multres + 1; //减法，取被减数的补码
+                    cnt_o = 1;
+                    stallreq_from_ex = 1; //请求暂停流水线
+                    hilo_temp1 = 0;
+                end else if(cnt_i == 1) begin //第二个周期
+                    hilo_temp_o = 0;
+                    cnt_o = 2;
+                    stallreq_from_ex = 0; //不再暂停流水线，时钟上升沿时一切正常
+                    hilo_temp1 = hilo_temp_i + {HI, LO};
+                end
+            end
+            default:{hilo_temp_o, cnt_o, stallreq_from_ex, hilo_temp1} = 0;
+        endcase
+    end
+end
+
 //如果是MTHI、MTLO指令，需要给出whilo_o,hi_o,lo_i
 //如果是mult、multu指令，也需要传递hilo的写入信息
 always@(*)begin
@@ -195,6 +244,10 @@ always@(*)begin
             `ALU_MULT, `ALU_MULTU: begin
                 whilo_o = 1;
                 {hi_o, lo_o} = multres;
+            end
+            `ALU_MADD,  `ALU_MADDU, `ALU_MSUB, `ALU_MSUBU:begin
+                whilo_o = 1;
+                {hi_o, lo_o} = hilo_temp1;
             end
         endcase
         
