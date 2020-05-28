@@ -3,16 +3,16 @@ module id(
     input wire rst,
     
     //来自取指阶段的信息
-    input wire[`InstAddrBus]    pc_i,
-    input wire[`InstBus]        inst_i,
+    input wire[31:0]    		pc_i,
+    input wire[31:0]           inst_i,
 
     //寄存器堆读取回路
-    output reg [`RegAddrBus]   reg1_addr_o,
-    output reg [`RegAddrBus]   reg2_addr_o,
+    output reg [4:0]          reg1_addr_o,
+    output reg [4:0]          reg2_addr_o,
     output reg                 reg1_read_o, //读使能 通过该信号判断源操作数来自imm还是寄存器堆
     output reg                 reg2_read_o,
-    input [`RegBus]             reg1_data_i,
-    input [`RegBus]             reg2_data_i,
+    input [31:0]             reg1_data_i,
+    input [31:0]             reg2_data_i,
 
     //数据前推->处于执行阶段的指令的运算结果
     input [31:0]                ex_wdata_i,
@@ -29,11 +29,20 @@ module id(
     output reg[2:0]               alusel_o, //运算类型
     output reg[4:0]                wd_o, //目的寄存器地址
     output reg                     wreg_o, //指令是否需要写入目的寄存器
-    output reg[`RegBus]            reg1_o, //指令源操作数1
-    output reg[`RegBus]            reg2_o, //指令源操作数2
+    output reg[31:0]                 reg1_o, //指令源操作数1
+    output reg[31:0]                reg2_o, //指令源操作数2
 
     //流水线暂停请求
-    output reg                  stallreq_from_id
+    output reg                  stallreq_from_id,
+
+    //检测分支和跳转指令后的相关信息
+    output reg [31:0]           branch_target_address_o,
+    output reg                  branch_flag_o,
+    output reg [31:0]           link_addr_o, //返回地址
+    output reg                  next_inst_in_delayslot_o, //代表当前指令的下一条指令在分支延迟槽中
+    output                      is_in_delayslot_o, //代表当前指令在分支延迟槽中
+    input                       is_in_delayslot_i
+
 
 );
 
@@ -44,16 +53,29 @@ reg [4:0]   sa;
 reg [5:0]   func;
 reg         InstValid;
 
+wire [31:0] pc_plus_4, pc_plus_8, imm_sll2_signedext;
+
+//分支跳转指令需要的局部变量
+assign pc_plus_4 = pc_i + 4;
+assign pc_plus_8 = pc_i + 8;
+//立即数左移两位符号扩展
+assign imm_sll2_signedext = {{14{inst_i[15]}}, inst_i[15:0], 2'b00};
+assign is_in_delayslot_o = rst ? 0 : is_in_delayslot_i;
 
 always @(*) begin
-    if(rst == 1) begin
+    if(rst) begin
         {reg1_addr_o,reg2_addr_o,reg1_read_o,reg2_read_o,
         aluop_o,alusel_o,wd_o,wreg_o} = 0;
         {opcode,rs,rt,rd,sa,func,imm} = 0;
+        {branch_target_address_o, branch_flag_o, link_addr_o,
+         next_inst_in_delayslot_o} = 0;
         InstValid = 1;
     end else begin
         {reg1_read_o,reg2_read_o,
         aluop_o,alusel_o,wreg_o, imm} = 0; //组合逻辑
+        //默认情况下，分支跳转相关信号全为0
+        {branch_target_address_o, branch_flag_o, link_addr_o,
+         next_inst_in_delayslot_o} = 0;
         {opcode,rs,rt,rd,sa,func} = inst_i;
         reg1_addr_o = rs;
         reg2_addr_o = rt;
@@ -295,7 +317,33 @@ always @(*) begin
                         reg2_read_o = 1;
                         InstValid = 1;
                     end
-                    
+                    `FUC_JR: begin
+                        wreg_o = 0;
+                        aluop_o = `ALU_JR;
+                        alusel_o = `ALU_RES_JUMP_BRANCH;
+                        reg1_read_o = 1; //只需要读rs寄存器
+                        reg2_read_o = 0;
+                        branch_flag_o = 1;
+                        link_addr_o = 0;
+                        branch_target_address_o = reg1_o;
+                        next_inst_in_delayslot_o = 1;
+                        InstValid = 1;
+                    end
+                    `FUC_JALR:begin
+                        wreg_o = 1;
+						//TODO stall from id
+						//wd_o = wd
+                        aluop_o = `ALU_JALR;
+                        alusel_o = `ALU_RES_JUMP_BRANCH;
+                        reg1_read_o = 1;
+                        reg2_read_o = 0;
+                        branch_flag_o = 1;
+                        branch_target_address_o = reg1_o;
+                        link_addr_o = pc_plus_8;
+                        next_inst_in_delayslot_o = 1;
+                        InstValid = 1;
+                    end
+
                 default: InstValid = 0; //未定义指令
                 
                 endcase
@@ -360,6 +408,70 @@ always @(*) begin
                         InstValid = 1;
                     end
                     default:InstValid = 0;
+                endcase
+            end
+            //REGIMM类
+            `OP_REGIMM:begin
+                case(rt)
+                    `RT_BLTZ:begin
+                        wreg_o = 0;
+                        aluop_o = `ALU_BLTZ;
+                        alusel_o = `ALU_RES_JUMP_BRANCH;
+                        reg1_read_o = 1;
+                        reg2_read_o = 0;
+                        if(reg1_o[31]) begin // < 0
+                            branch_flag_o = 1;
+                            branch_target_address_o = pc_plus_4 + imm_sll2_signedext;
+                            next_inst_in_delayslot_o = 1;
+                        end
+                        link_addr_o = 0;
+                        InstValid = 1;
+                    end
+                    `RT_BGEZ:begin
+                        wreg_o = 0;
+                        aluop_o = `ALU_BGEZ;
+                        alusel_o = `ALU_RES_JUMP_BRANCH;
+                        reg1_read_o = 1;
+                        reg2_read_o = 0;
+                        if(!reg1_o[31] || reg1_o == 0) begin // >= 0
+                            branch_flag_o = 1;
+                            branch_target_address_o = pc_plus_4 + imm_sll2_signedext;
+                            next_inst_in_delayslot_o = 1;
+                        end
+                        link_addr_o = 0;
+                        InstValid = 1;
+                    end
+                    `RT_BLTZAL:begin
+                        wreg_o = 1;
+                        wd_o = 5'd31;
+                        aluop_o = `ALU_BLTZAL;
+                        alusel_o = `ALU_RES_JUMP_BRANCH;
+                        reg1_read_o = 1;
+                        reg2_read_o = 0;
+                        if(reg1_o[31]) begin //< 0
+                            branch_flag_o = 1;
+                            branch_target_address_o = pc_plus_4 + imm_sll2_signedext;
+                            next_inst_in_delayslot_o = 1;
+                        end
+                        link_addr_o = pc_plus_8;
+                        InstValid = 1;
+                    end
+                    `RT_BGEZAL:begin
+                        wreg_o = 1;
+                        wd_o = 5'd31;
+                        aluop_o = `ALU_BGEZAL;
+                        alusel_o = `ALU_RES_JUMP_BRANCH;
+                        reg1_read_o = 1;
+                        reg2_read_o = 0;
+                        if(!reg1_o[31] || reg1_o == 0) begin //>= 0
+                            branch_flag_o = 1;
+                            branch_target_address_o = pc_plus_4 + imm_sll2_signedext;
+                            next_inst_in_delayslot_o = 1;
+                        end
+                        link_addr_o = pc_plus_8;
+                        InstValid = 1;
+                    end
+                    default: InstValid = 0;
                 endcase
             end
             `OP_ANDI:begin
@@ -447,6 +559,88 @@ always @(*) begin
                 wd_o = rt;
                 InstValid = 1;
             end
+            `OP_J:begin
+                wreg_o = 0;
+                aluop_o = `ALU_J;
+                alusel_o = `ALU_RES_JUMP_BRANCH;
+                reg1_read_o = 0;
+                reg2_read_o = 0;
+                branch_flag_o = 1;
+                branch_target_address_o = {pc_plus_4[31:28], inst_i[25:0], 2'b00};
+                link_addr_o = 0;
+                next_inst_in_delayslot_o = 1;
+                InstValid = 1;
+            end
+            `OP_JAL:begin
+                wreg_o = 1;
+                wd_o = 31;
+                aluop_o = `ALU_JAL;
+                alusel_o = `ALU_RES_JUMP_BRANCH;
+                reg1_read_o = 0;
+                reg2_read_o = 0;
+                branch_flag_o = 1;
+                branch_target_address_o = {pc_plus_4[31:28], inst_i[25:0], 2'b00};
+                link_addr_o = pc_plus_8;
+                next_inst_in_delayslot_o = 1;
+                InstValid = 1;
+            end
+            `OP_BEQ:begin
+                wreg_o = 0;
+                aluop_o = `ALU_BEQ;
+                alusel_o = `ALU_RES_JUMP_BRANCH;
+                reg1_read_o = 1;
+                reg2_read_o = 1;
+                if(reg1_o==reg2_o) begin
+                    branch_flag_o = 1;
+                    branch_target_address_o = pc_plus_4 + imm_sll2_signedext;
+                    next_inst_in_delayslot_o = 1;
+                end
+                link_addr_o = 0;
+                InstValid = 1;
+            end
+			//TODO 指令译码
+            `OP_BNE:begin
+                wreg_o = 0;
+                aluop_o = `ALU_BNE;
+                alusel_o = `ALU_RES_JUMP_BRANCH;
+                reg1_read_o = 1;
+                reg2_read_o = 1;
+                if(reg1_o != reg1_o) begin
+                    branch_flag_o = 1;
+                    branch_target_address_o = pc_plus_4 + imm_sll2_signedext;
+                    next_inst_in_delayslot_o = 1;
+                end
+                link_addr_o = 0;
+                InstValid = 1;
+            end
+            `OP_BGTZ:begin
+                wreg_o = 0;
+                aluop_o = `ALU_BGTZ;
+                alusel_o = `ALU_RES_JUMP_BRANCH;
+                reg1_read_o = 1;
+                reg2_read_o = 0;
+                if(!reg1_o[31] && reg1_o!=0) begin // > 0
+                    branch_flag_o = 1;
+                    branch_target_address_o = pc_plus_4 + imm_sll2_signedext;
+                    next_inst_in_delayslot_o = 1;
+                end
+                link_addr_o = 0;
+                InstValid = 1;
+            end
+            `OP_BLEZ:begin
+                wreg_o = 0;
+                aluop_o = `ALU_BLEZ;
+                alusel_o = `ALU_RES_JUMP_BRANCH;
+                reg1_read_o = 1;
+                reg2_read_o = 0;
+                if(reg1_o[31] || reg1_o==0) begin // <= 0
+                    branch_flag_o = 1;
+                    branch_target_address_o = pc_plus_4 + imm_sll2_signedext;
+                    next_inst_in_delayslot_o = 1;
+                end
+                link_addr_o = 0;
+                InstValid = 1;
+			end
             default: InstValid = 0;
         endcase
     end
@@ -454,7 +648,7 @@ end
 
 //操作数1
 always @(*) begin
-    if(rst==1) reg1_o = 0;
+    if(rst) reg1_o = 0;
     else begin
         if(reg1_read_o) begin
             if(ex_wreg_i && ex_wd_i==reg1_addr_o && ex_wd_i != 0) 

@@ -9,6 +9,8 @@ module ex(
     input [31:0] reg2_i,
     input [4:0] wd_i,
     input       wreg_i,
+    input  [31:0] link_address_i, //转移指令返回地址
+    input         is_in_delayslot_i, //当前指令是否位于分支延迟槽
 
     //HILO模块给出的寄存器值
     input [31:0] hi_i,lo_i,
@@ -199,6 +201,7 @@ always @(*) begin
         `ALU_RES_SHIFT: wdata_o = shiftres;
         `ALU_RES_MOVE: wdata_o = moveres;
         `ALU_RES_ARITH: wdata_o = arithres;
+        `ALU_RES_JUMP_BRANCH: wdata_o = link_address_i;
     default: wdata_o = 0;
     endcase
 end

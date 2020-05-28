@@ -42,7 +42,7 @@ module div(
 					else if(cnt==32)  next_state = DivEnd;
 				end
 				DivEnd: begin
-					if(start_i == 0) //BUG EX接收到了结果
+					if(start_i == 0) 
 						next_state = DivFree;
 				end
 			endcase

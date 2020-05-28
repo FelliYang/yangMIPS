@@ -2,21 +2,6 @@
 `define DEFINES
 
 //********************* 全局的宏定义    ***************************
-`define RstEnable       1'b1            //复位信号有效
-`define RstDisable      1'b0            //复位信号无效
-`define ZeroWord        32'h00000000    //32位的数值0
-`define WriteEnable     1'b1            //使能写
-`define WriteDisable    1'b0            //禁止写
-`define ReadEnable      1'b1            //使能读
-`define ReadDisable     1'b0            //禁止读
-`define ChipEnable      1'b1            //芯片使能
-`define ChipDisable     1'b0            //芯片禁止
-
-//寄存器堆相关
-`define RegAddrBus      4:0             
-`define RegBus          31:0
-`define RegNum          32
-
 
 //指令译码相关
 `define AluOpBus        7:0
@@ -31,6 +16,7 @@
 //指令大类型->使用op域判断
 `define OP_SPECIAL      6'b000000
 `define OP_SPECIAL2		6'b011100
+`define OP_REGIMM		6'b000001
 `define OP_ANDI         6'b001100
 `define OP_ORI          6'b001101
 `define OP_XORI         6'b001110
@@ -40,8 +26,15 @@
 `define OP_ADDIU		6'b001001
 `define OP_SLTI			6'b001010
 `define OP_SLTIU		6'b001011
+`define OP_J			6'b000010
+`define OP_JAL			6'b000011
+`define OP_BEQ			6'b000100
+`define OP_BGTZ			6'b000111
+`define OP_BLEZ			6'b000110
+`define OP_BNE			6'b000101
 
-/*指令子类型->使用function域判断*/
+/****指令子类型->使用function域判断****/
+/*special*/
 //移位指令
 `define FUC_SLL         6'b000000
 `define FUC_SLLV        6'b000100
@@ -72,7 +65,10 @@
 `define FUC_MULTU		6'b011001
 `define FUC_DIV			6'b011010
 `define FUC_DIVU		6'b011011
-//special2->
+//跳转分支指令
+`define FUC_JR			6'b001000
+`define FUC_JALR		6'b001001
+/*special2->*/
 `define FUC_CLZ			6'b100000
 `define FUC_CLO			6'b100001
 `define FUC_MUL			6'b000010
@@ -81,8 +77,17 @@
 `define FUC_MSUB		6'b000100
 `define FUC_MSUBU		6'b000101
 
+/*****指令子类型->使用rt域判断*****/
+`define RT_BLTZ			5'b00000
+`define RT_BLTZAL		5'b10000
+`define RT_BGEZ			5'b00001
+`define RT_BGEZAL		5'b10001
+
 
 /*aluop ->运算子类型	前3位表示alusel运算类型 后5位表示子类型编号*/
+//空指令
+`define ALU_NOP			8'b000_00000
+//逻辑指令
 `define ALU_AND		   	8'b001_00000
 `define ALU_OR	    	8'b001_00001
 `define ALU_XOR		  	8'b001_00010
@@ -91,23 +96,20 @@
 `define ALU_ORI		  	8'b001_00101
 `define ALU_XORI	  	8'b001_00110
 `define ALU_LUI		  	8'b001_00111
-
+//移位指令
 `define ALU_SLL		  	8'b010_00000
 `define ALU_SLLV	  	8'b010_00001
 `define ALU_SRL		  	8'b010_00010
 `define ALU_SRLV	 	8'b010_00011
 `define ALU_SRA	 		8'b010_00100
 `define ALU_SRAV  		8'b010_00101
-
-`define ALU_NOP			8'b000_00000
-
+//移动指令
 `define ALU_MOVZ		8'b011_00000
 `define ALU_MOVN		8'b011_00001
 `define ALU_MFHI		8'b011_00010
 `define ALU_MFLO		8'b011_00011
 `define ALU_MTHI		8'b011_00100
 `define ALU_MTLO		8'b011_00101
-
 //简单运算指令
 `define ALU_ADD			8'b100_00000
 `define ALU_ADDU		8'b100_00001
@@ -130,6 +132,19 @@
 `define ALU_MSUBU		8'b100_10010
 `define ALU_DIV			8'b100_10011
 `define ALU_DIVU		8'b100_10100
+//跳转分支指令
+`define ALU_JR  		8'b101_00000
+`define ALU_JALR		8'b101_00001
+`define ALU_J			8'b101_00010
+`define ALU_JAL			8'b101_00011
+`define ALU_BEQ			8'b101_00100
+`define ALU_BGTZ		8'b101_00101
+`define ALU_BLEZ		8'b101_00110
+`define ALU_BNE			8'b101_00111
+`define ALU_BLTZ		8'b101_01000
+`define ALU_BLTZAL		8'b101_01001
+`define ALU_BGEZ		8'b101_01010
+`define ALU_BGEZAL		8'b101_01011
 
 /*alusel -> 运算类型*/
 `define ALU_RES_NOP     3'b000
@@ -137,6 +152,7 @@
 `define ALU_RES_SHIFT 	3'b010
 `define ALU_RES_MOVE	3'b011
 `define ALU_RES_ARITH	3'b100 //算数指令
+`define ALU_RES_JUMP_BRANCH 3'b101
 
 
 `endif

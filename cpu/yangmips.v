@@ -23,6 +23,12 @@ wire [31:0] id_reg1_o;
 wire [31:0] id_reg2_o;
 wire [4:0]  id_wd_o;
 wire        id_wreg_o;
+wire [31:0] id_link_address_o; //转移指令返回地址
+wire 		id_is_in_delayslot_o;
+wire 		next_inst_in_delayslot_o;
+//连接ID模块和PC_reg模块，用于转移指令的信号
+wire [31:0] id_branch_target_address_o;
+wire		id_branch_flag_o;
 
 //连接ID/EX模块的输出与执行阶段EX模块的输入
 wire [31:0] ex_reg1_i, ex_reg2_i;
@@ -30,6 +36,10 @@ wire [4:0]  ex_wd_i;
 wire        ex_wreg_i;
 wire [2:0]  ex_alusel_i;
 wire [7:0]  ex_aluop_i;
+wire [31:0] ex_link_address_i;
+wire 		ex_is_in_delayslot_i;
+//连接ID/EX模块和ID模块输入，用于转移的信号
+wire 		is_in_delayslot;
 
 //连接HI/LO模块的输出于EX模块的输入
 wire [31:0] hi, lo;
@@ -76,7 +86,9 @@ wire [5:0] stall;
 
 //pc_reg实例化
 pc_reg pc_reg0(
-    .clk(clk), .rst(rst), .pc(pc), .ce(rom_ce_o) , .stall(stall)
+    .clk(clk), .rst(rst), .pc(pc), .ce(rom_ce_o) , .stall(stall),
+	.branch_target_address_i(id_branch_target_address_o),
+	.branch_flag_i(id_branch_flag_o)
 );
 assign rom_addr_o = pc;
 
@@ -111,7 +123,15 @@ id id0(
     .wd_o(id_wd_o), .wreg_o(id_wreg_o), .reg1_o(id_reg1_o), .reg2_o(id_reg2_o),
 
     //流水线暂停请求
-    .stallreq_from_id(stallreq_from_id)
+    .stallreq_from_id(stallreq_from_id),
+
+	//转移指令相关信号
+	.branch_target_address_o(id_branch_target_address_o),
+	.branch_flag_o(id_branch_flag_o), 
+	.next_inst_in_delayslot_o(next_inst_in_delayslot_o),
+	.is_in_delayslot_o(id_is_in_delayslot_o),
+	.link_addr_o(id_link_address_o),
+	.is_in_delayslot_i(is_in_delayslot)
     
 );
 
@@ -134,11 +154,19 @@ id_ex id_ex0(
     .id_reg1(id_reg1_o), .id_reg2(id_reg2_o),
     .id_wd(id_wd_o), .id_wreg(id_wreg_o), 
     .id_alusel(id_alusel_o), .id_aluop(id_aluop_o),
+	.id_is_in_delayslot(id_is_in_delayslot_o),
+	.id_link_address(id_link_address_o),
+	.next_inst_in_delayslot_i(next_inst_in_delayslot_o),
 
     //传递到执行阶段EX模块的信息
     .ex_reg1(ex_reg1_i), .ex_reg2(ex_reg2_i),
     .ex_wd(ex_wd_i), .ex_wreg(ex_wreg_i),
-    .ex_alusel(ex_alusel_i), .ex_aluop(ex_aluop_i)
+    .ex_alusel(ex_alusel_i), .ex_aluop(ex_aluop_i),
+	.ex_link_address(ex_link_address_i), 
+	.ex_is_in_delayslot(ex_is_in_delayslot_i),
+
+	//用于分支延迟槽的临时信号
+	.is_in_delayslot_o(is_in_delayslot)
 );
 
 //EX模块实例化
@@ -149,6 +177,8 @@ ex ex0(
     .reg1_i(ex_reg1_i), .reg2_i(ex_reg2_i),
     .wd_i(ex_wd_i), .wreg_i(ex_wreg_i),
     .alusel_i(ex_alusel_i), .aluop_i(ex_aluop_i),
+	.link_address_i(ex_link_address_i),
+	.is_in_delayslot_i(ex_is_in_delayslot_i),
 
     //来自HI/LO模块的信息
     .hi_i(hi), .lo_i(lo),
