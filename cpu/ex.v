@@ -3,6 +3,7 @@ module ex(
     input rst,
     
     //来自译码级的信息
+	input [31:0] inst_i,
     input [2:0]alusel_i,
     input [7:0]aluop_i,
     input [31:0] reg1_i,
@@ -41,11 +42,21 @@ module ex(
     //->HILO寄存器
     output reg  whilo_o,
     output reg [31:0] hi_o,lo_o,
+	//其他传给MEM级的信号(用于存储指令)
+	output [7:0] aluop_o,
+	output [31:0] mem_addr_o,
+	output [31:0] reg2_o, 
 
     //流水线暂停请求
     output reg stallreq_from_ex
 
 );
+
+//直接传递信号
+assign aluop_o = aluop_i;
+assign reg2_o = reg2_i;
+assign mem_addr_o = reg1_i + {{16{inst_i[15]}}, inst_i[15:0]};
+
 reg [31:0] logicout; //逻辑运算
 reg [31:0] shiftres; //移位运算 
 reg [31:0] moveres; //移动运算

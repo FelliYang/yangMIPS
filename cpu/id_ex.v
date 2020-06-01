@@ -3,6 +3,7 @@ module id_ex(
     input rst,
     input [5:0] stall,
     //译码阶段的结果
+	input [31:0] id_inst,
     input [31:0] id_reg1,
     input [31:0] id_reg2,
     input [4:0]  id_wd,
@@ -11,6 +12,7 @@ module id_ex(
     input [7:0]id_aluop,
 
     //送到执行阶段的信息
+	output reg[31:0] ex_inst,
     output reg[31:0] ex_reg1,
     output reg[31:0] ex_reg2,
     output reg[4:0] ex_wd,
@@ -29,10 +31,11 @@ module id_ex(
 
 always @(posedge clk ) begin
     if(rst) begin
-       {ex_reg1, ex_reg2, ex_wd, ex_wreg , ex_alusel, ex_aluop} <= 0;
+       {ex_inst,ex_reg1, ex_reg2, ex_wd, ex_wreg , ex_alusel, ex_aluop} <= 0;
        {ex_is_in_delayslot,ex_link_address,is_in_delayslot_o} <= 0; 
     end
     else if (!stall[2])begin
+		ex_inst <= id_inst;
         ex_reg1 <= id_reg1;
         ex_reg2 <= id_reg2;
         ex_wd <= id_wd;
@@ -43,7 +46,7 @@ always @(posedge clk ) begin
         ex_link_address <= id_link_address;
         is_in_delayslot_o <= next_inst_in_delayslot_i;
     end else if(stall[2] && !stall[3]) begin
-        {ex_reg1, ex_reg2, ex_wd,ex_wreg, ex_alusel, ex_aluop} <= 0;
+        {ex_inst, ex_reg1, ex_reg2, ex_wd,ex_wreg, ex_alusel, ex_aluop} <= 0;
         {ex_is_in_delayslot,ex_link_address,is_in_delayslot_o} <= 0; 
     end
        

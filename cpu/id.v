@@ -25,15 +25,16 @@ module id(
     input                       mem_wreg_i,
 
     //译码阶段的结果
-    output reg[7:0]                aluop_o, //运算子类型
-    output reg[2:0]               alusel_o, //运算类型
-    output reg[4:0]                wd_o, //目的寄存器地址
-    output reg                     wreg_o, //指令是否需要写入目的寄存器
-    output reg[31:0]                 reg1_o, //指令源操作数1
+	output [31:0]					inst_o, //向后传递指令
+    output reg[7:0]                	aluop_o, //运算子类型
+    output reg[2:0]               	alusel_o, //运算类型
+    output reg[4:0]               	wd_o, //目的寄存器地址
+    output reg                     	wreg_o, //指令是否需要写入目的寄存器
+    output reg[31:0]                reg1_o, //指令源操作数1
     output reg[31:0]                reg2_o, //指令源操作数2
 
     //流水线暂停请求
-    output reg                  stallreq_from_id,
+    output   	                  stallreq_from_id,
 
     //检测分支和跳转指令后的相关信息
     output reg [31:0]           branch_target_address_o,
@@ -41,10 +42,15 @@ module id(
     output reg [31:0]           link_addr_o, //返回地址
     output reg                  next_inst_in_delayslot_o, //代表当前指令的下一条指令在分支延迟槽中
     output                      is_in_delayslot_o, //代表当前指令在分支延迟槽中
-    input                       is_in_delayslot_i
+    input                       is_in_delayslot_i,
+
+	//load指令导致的数据冒险相关信号
+	input [7:0]					ex_aluop_i
 
 
 );
+
+assign inst_o = inst_i; //向后传递指令
 
 reg [31:0]  imm; //立即数
 reg [5:0]   opcode;
@@ -331,7 +337,6 @@ always @(*) begin
                     end
                     `FUC_JALR:begin
                         wreg_o = 1;
-						//TODO stall from id
 						//wd_o = wd
                         aluop_o = `ALU_JALR;
                         alusel_o = `ALU_RES_JUMP_BRANCH;
@@ -598,7 +603,6 @@ always @(*) begin
                 link_addr_o = 0;
                 InstValid = 1;
             end
-			//TODO 指令译码
             `OP_BNE:begin
                 wreg_o = 0;
                 aluop_o = `ALU_BNE;
@@ -641,6 +645,109 @@ always @(*) begin
                 link_addr_o = 0;
                 InstValid = 1;
 			end
+			`OP_LB:begin
+				wreg_o = 1;
+				aluop_o = `ALU_LB;
+				alusel_o = `ALU_RES_LOAD_STORE;
+				reg1_read_o = 1;
+				reg2_read_o = 0;
+				wd_o = rt;
+				InstValid = 1;
+			end
+			`OP_LBU:begin
+				wreg_o = 1;
+				aluop_o = `ALU_LBU;
+				alusel_o = `ALU_RES_LOAD_STORE;
+				reg1_read_o = 1;
+				reg2_read_o = 0;
+				wd_o = rt;
+				InstValid = 1;
+			end
+			`OP_LH:begin
+				wreg_o = 1;
+				aluop_o = `ALU_LH;
+				alusel_o = `ALU_RES_LOAD_STORE;
+				reg1_read_o = 1;
+				reg2_read_o = 0;
+				wd_o = rt;
+				InstValid = 1;
+			end
+			`OP_LHU:begin
+				wreg_o = 1;
+				aluop_o = `ALU_LHU;
+				alusel_o = `ALU_RES_LOAD_STORE;
+				reg1_read_o = 1;
+				reg2_read_o = 0;
+				wd_o = rt;
+				InstValid = 1;
+			end
+			`OP_LW:begin
+				wreg_o = 1;
+				aluop_o = `ALU_LW;
+				alusel_o = `ALU_RES_LOAD_STORE;
+				reg1_read_o = 1;
+				reg2_read_o = 0;
+				wd_o = rt;
+				InstValid = 1;
+			end
+			`OP_SB:begin
+				wreg_o = 0;
+				aluop_o = `ALU_SB;
+				alusel_o = `ALU_RES_LOAD_STORE;
+				reg1_read_o = 1;
+				reg2_read_o = 1;
+				InstValid = 1;
+			end
+			`OP_SH:begin
+				wreg_o = 0;
+				aluop_o = `ALU_SH;
+				alusel_o = `ALU_RES_LOAD_STORE;
+				reg1_read_o = 1;
+				reg2_read_o = 1;
+				InstValid = 1;
+			end
+			`OP_SW:begin
+				wreg_o = 0;
+				aluop_o = `ALU_SW;
+				alusel_o = `ALU_RES_LOAD_STORE;
+				reg1_read_o = 1;
+				reg2_read_o = 1;
+				InstValid = 1;
+			end
+			`OP_LWL:begin
+				wreg_o = 1;
+				aluop_o = `ALU_LWL;
+				alusel_o = `ALU_RES_LOAD_STORE;
+				reg1_read_o = 1;
+				reg2_read_o = 1; //也需要读取rt寄存器的初始值
+				wd_o = rt;
+				InstValid = 1;
+			end
+			`OP_LWR:begin
+				wreg_o = 1;
+				aluop_o = `ALU_LWR;
+				alusel_o = `ALU_RES_LOAD_STORE;
+				reg1_read_o = 1;
+				reg2_read_o = 1;//也需要读取rt寄存器的初始值
+				wd_o = rt;
+				InstValid = 1;
+			end
+			`OP_SWL:begin
+				wreg_o = 0;
+				aluop_o = `ALU_SWL;
+				alusel_o = `ALU_RES_LOAD_STORE;
+				reg1_read_o = 1;
+				reg2_read_o = 1;
+				InstValid = 1;
+			end
+			`OP_SWR:begin
+				wreg_o = 0;
+				aluop_o = `ALU_SWR;
+				alusel_o = `ALU_RES_LOAD_STORE;
+				reg1_read_o = 1;
+				reg2_read_o = 1;
+				InstValid = 1;
+			end
             default: InstValid = 0;
         endcase
     end
@@ -674,5 +781,29 @@ always @(*) begin
         else reg2_o = imm;
     end
 end
+
+//load指令导致的数据相关->暂停流水线
+reg	stallreq_for_reg1_loadrelate;
+reg stallreq_for_reg2_loadrelate;
+wire pre_inst_is_load;
+
+assign pre_inst_is_load = (ex_aluop_i==`ALU_LB || ex_aluop_i==`ALU_LBU ||
+						ex_aluop_i==`ALU_LH || ex_aluop_i==`ALU_LHU ||
+						ex_aluop_i==`ALU_LW || ex_aluop_i==`ALU_LWL ||
+						ex_aluop_i==`ALU_LWR) ? 1 : 0;
+//reg1
+always @(*) begin
+	stallreq_for_reg1_loadrelate = 0;
+	if(pre_inst_is_load && ex_wd_i == reg1_addr_o && reg1_read_o) 
+		stallreq_for_reg1_loadrelate = 1; 
+end
+//reg2
+always @(*) begin
+	stallreq_for_reg2_loadrelate = 0;
+	if(pre_inst_is_load && ex_wd_i == reg2_addr_o && reg2_read_o) 
+		stallreq_for_reg2_loadrelate = 1; 
+end
+
+assign stallreq_from_id = stallreq_for_reg1_loadrelate | stallreq_for_reg2_loadrelate;
 
 endmodule // id
