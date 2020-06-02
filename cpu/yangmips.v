@@ -81,12 +81,16 @@ wire [31:0]  mem_hi_i,mem_lo_i;
 wire [7:0]	mem_aluop_o;
 wire [31:0] mem_mem_addr_o, mem_reg2_o;
 
+//连接LLbit_reg输出与MEM模块的输入
+wire 		mem_LLbit_i;
+
 //连接访存阶段MEM模块的输出与MEM/WB模块的输入
 wire [31:0] mem_wdata_o;
 wire [4:0]  mem_wd_o;
 wire        mem_wreg_o;
 wire        mem_whilo_o;
 wire [31:0] mem_hi_o,mem_lo_o;
+wire 		mem_LLbit_we_o,mem_LLbit_value_o;
 
 
 //连接MEM/WB模块的输出与回写阶段的输入
@@ -95,6 +99,7 @@ wire [4:0]  wb_wd_i;
 wire        wb_wreg_i;
 wire        wb_whilo_i;
 wire [31:0]  wb_hi_i, wb_lo_i;
+wire wb_LLbit_we_i, wb_LLbit_value_i;
 
 //流水线暂停控制信号
 wire stallreq_from_id, stallreq_from_ex;
@@ -262,7 +267,6 @@ ex_mem ex_mem0(
 //MEM模块实例化
 mem mem0(
     .rst(rst),
-	//TODO 连接EX/MEM寄存器和MEM模块
     //来自执行阶段的信息
     .wdata_i(mem_wdata_i), .wd_i(mem_wd_i), .wreg_i(mem_wreg_i),
     .whilo_i(mem_whilo_i), .hi_i(mem_hi_i), .lo_i(mem_lo_i),
@@ -271,13 +275,17 @@ mem mem0(
     //输出到MEM/WB模块的信息
     .wdata_o(mem_wdata_o), .wd_o(mem_wd_o), .wreg_o(mem_wreg_o),
     .whilo_o(mem_whilo_o), .hi_o(mem_hi_o), .lo_o(mem_lo_o),
+	.LLbit_we_o(mem_LLbit_we_o), .LLbit_value_o(mem_LLbit_value_o),
 
 	//输出到RAM的信号
 	.mem_addr_o(ram_addr_o), .mem_data_o(ram_data_o), .mem_we_o(ram_we_o),
 	.mem_sel_o(ram_sel_o), .mem_ce_o(ram_ce_o),
 
 	//从RAM输入的信号
-	.mem_data_i(ram_data_i)
+	.mem_data_i(ram_data_i),
+
+	//从LLbit_reg输入的信号
+	.LLbit_i(mem_LLbit_i)
 );
 
 //MEM/WB模块实例化
@@ -287,10 +295,12 @@ mem_wb mem_wb0(
     //来自访存阶段mem模块的信息
     .mem_wdata(mem_wdata_o), .mem_wd(mem_wd_o), .mem_wreg(mem_wreg_o),
     .mem_whilo(mem_whilo_o), .mem_hi(mem_hi_o), .mem_lo(mem_lo_o),
+	.mem_LLbit_we(mem_LLbit_we_o), .mem_LLbit_value(mem_LLbit_value_o),
 
     //输出到写回阶段的信息
     .wb_wdata(wb_wdata_i), .wb_wd(wb_wd_i), .wb_wreg(wb_wreg_i),
-    .wb_whilo(wb_whilo_i), .wb_hi(wb_hi_i), .wb_lo(wb_lo_i)
+    .wb_whilo(wb_whilo_i), .wb_hi(wb_hi_i), .wb_lo(wb_lo_i),
+	.wb_LLbit_we(wb_LLbit_we_i), .wb_LLbit_value(wb_LLbit_value_i)
 
 );
 
@@ -302,6 +312,18 @@ hilo_reg hilo_reg0(
 
     //送到执行阶段的信息
     .hi_o(hi), .lo_o(lo)
+);
+
+LLbit_reg LLbit_reg0(
+	.clk(clk), .rst(rst),
+
+    //来自写回阶段的信息
+	.LLbit_i(wb_LLbit_value_i), .we(wb_LLbit_we_i),
+    //送到执行阶段的信息
+    .LLbit_o(mem_LLbit_i),
+	//异常触发信号
+	.flush(1'b0)
+
 );
 
 //流水线控制暂停模块

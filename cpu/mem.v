@@ -23,13 +23,19 @@ module mem(
 	output reg [`DataBus] mem_data_o,
 	output reg		mem_we_o, //写使能
 	output reg [3:0] mem_sel_o, //字节选择信号
-	output reg		mem_ce_o //数据存储器使能信号
+	output reg		mem_ce_o, //数据存储器使能信号
+
+	//LL SC指令相关信号
+	input LLbit_i,
+	output reg LLbit_we_o,
+	output reg LLbit_value_o 
 
 );
     //组合逻辑
     always @(*) begin
         if(rst) {wd_o,wdata_o,wreg_o,whilo_o,hi_o,lo_o,
-		mem_addr_o, mem_data_o, mem_we_o, mem_sel_o, mem_ce_o} = 0;
+		mem_addr_o, mem_data_o, mem_we_o, mem_sel_o, mem_ce_o,
+		LLbit_we_o, LLbit_value_o} = 0;
         else begin
             wd_o = wd_i;
             wdata_o = wdata_i;
@@ -41,6 +47,8 @@ module mem(
 			 mem_ce_o = 0;
 			 mem_sel_o = 4'b1111;
 			{mem_addr_o, mem_data_o, mem_we_o} = 0;
+			//LL SC 特殊信号
+			{LLbit_we_o, LLbit_value_o} = 0;
 			case(aluop_i)
 				`ALU_LB: begin
 					mem_addr_o = mem_addr_i;
@@ -257,6 +265,28 @@ module mem(
 						end
 						default:mem_sel_o = 4'b0000;
 					endcase
+				end
+				`ALU_LL:begin
+					mem_addr_o = mem_addr_i;
+					mem_we_o = 0;
+					mem_ce_o = 1;
+					wdata_o = mem_data_i;
+					mem_sel_o = 4'b1111;
+					LLbit_we_o = 1;
+					LLbit_value_o = 1;
+				end
+				`ALU_SC:begin
+					if(LLbit_i==1) begin //原子操作
+						mem_addr_o = mem_addr_i;
+						mem_we_o = 1;
+						mem_ce_o = 1;
+						mem_data_o = reg2_i;
+						mem_sel_o = 4'b1111;
+						wdata_o = 1;
+						LLbit_we_o = 1;
+						LLbit_value_o = 0;	
+					end else wdata_o = 0;
+
 				end
 			endcase
         end

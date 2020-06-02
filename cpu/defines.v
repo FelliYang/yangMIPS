@@ -51,6 +51,8 @@
 `define OP_LWR			6'b100110
 `define OP_SWL			6'b101010
 `define OP_SWR			6'b101110
+`define OP_LL 			6'b110000
+`define OP_SC  			6'b111000
 
 
 /****指令子类型->使用function域判断****/
@@ -178,6 +180,8 @@
 `define ALU_LWR			8'b110_01001
 `define ALU_SWL			8'b110_01010
 `define ALU_SWR			8'b110_01011
+`define ALU_LL			8'b100_01100
+`define ALU_SC			8'b100_01101
 
 
 /*alusel -> 运算类型*/

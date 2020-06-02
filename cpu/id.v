@@ -748,6 +748,24 @@ always @(*) begin
 				reg2_read_o = 1;
 				InstValid = 1;
 			end
+			`OP_LL:begin
+				wreg_o = 1;
+				wd_o = rt;
+				aluop_o = `ALU_LL;
+				alusel_o = `ALU_RES_LOAD_STORE;
+				reg1_read_o = 1;
+				reg2_read_o = 0;
+				InstValid = 1;
+			end
+			`OP_SC:begin
+				wreg_o = 1;
+				wd_o = rt;
+				aluop_o = `ALU_SC;
+				alusel_o = `ALU_RES_LOAD_STORE;
+				reg1_read_o = 1;
+				reg2_read_o = 1;
+				InstValid = 1;
+			end
             default: InstValid = 0;
         endcase
     end
@@ -790,7 +808,8 @@ wire pre_inst_is_load;
 assign pre_inst_is_load = (ex_aluop_i==`ALU_LB || ex_aluop_i==`ALU_LBU ||
 						ex_aluop_i==`ALU_LH || ex_aluop_i==`ALU_LHU ||
 						ex_aluop_i==`ALU_LW || ex_aluop_i==`ALU_LWL ||
-						ex_aluop_i==`ALU_LWR) ? 1 : 0;
+						ex_aluop_i==`ALU_LWR || ex_aluop_i==`ALU_LL || 
+						ex_aluop_i==`ALU_SC) ? 1 : 0;
 //reg1
 always @(*) begin
 	stallreq_for_reg1_loadrelate = 0;
