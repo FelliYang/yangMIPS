@@ -193,5 +193,12 @@
 `define ALU_RES_JUMP_BRANCH 3'b101
 `define ALU_RES_LOAD_STORE 3'b110
 
+`define CP0_COUNT		5'b01001
+`define CP0_COMPARE		5'b01011
+`define CP0_STATUS		5'b01100
+`define CP0_CAUSE		5'b01101
+`define CP0_EPC			5'b01110
+`define CP0_PRID		5'b01111
+`define CP0_CONFIG		5'b10000	
 
 `endif
