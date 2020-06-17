@@ -11,6 +11,9 @@ module ex_mem(
 	input [7:0] 		ex_aluop,
 	input [31:0]		ex_mem_addr, 
 	input [31:0] 		ex_reg2,
+	input [5:0]			ex_cp0_waddr,
+	input [31:0]		ex_cp0_wdata,
+	input 				ex_cp0_we,
 
     //指令多周期执行时，来自EX模块的临时信号
     input [63:0] hilo_i,
@@ -25,13 +28,17 @@ module ex_mem(
     output reg          mem_whilo,
     output reg [31:0]   mem_hi,mem_lo,
 	output reg[7:0]		mem_aluop,
-	output reg[31:0]	mem_mem_addr, mem_reg2
+	output reg[31:0]	mem_mem_addr, mem_reg2,
+	output reg [5:0] 	mem_cp0_waddr,
+	output reg[31:0]	mem_cp0_wdata,
+	output reg 			mem_cp0_we
 );
 
 always @(posedge clk) begin
     if(rst) {mem_aluop, mem_mem_addr, mem_reg2, 
 		mem_wd, mem_wdata,mem_wreg, mem_whilo, mem_hi, mem_lo, 
-		hilo_o, cnt_o} <= 0;
+		hilo_o, cnt_o,
+		mem_cp0_waddr, mem_cp0_wdata, mem_cp0_we} <= 0;
     else if(!stall[3])begin
         mem_wd <= ex_wd;
         mem_wdata <= ex_wdata;
@@ -44,9 +51,13 @@ always @(posedge clk) begin
 		mem_reg2 <= ex_reg2;
         hilo_o <= 0;
         cnt_o <= 0;
+		mem_cp0_waddr <= ex_cp0_waddr;
+		mem_cp0_wdata <= ex_cp0_wdata;
+		mem_cp0_we <= ex_cp0_we;
     end else if(stall[3] && !stall[4]) begin
         {mem_aluop, mem_mem_addr, mem_reg2, 
-		mem_wd,mem_wdata, mem_wreg, mem_whilo, mem_hi, mem_lo} <= 0;
+		mem_wd,mem_wdata, mem_wreg, mem_whilo, mem_hi, mem_lo,
+		mem_cp0_waddr, mem_cp0_wdata, mem_cp0_we} <= 0;
         hilo_o <= hilo_i;
         cnt_o <= cnt_i;
     end else begin

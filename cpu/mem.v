@@ -10,7 +10,9 @@ module mem(
     input [31:0] hi_i,lo_i,
 	input [7:0] aluop_i,
 	input [31:0] mem_addr_i, reg2_i,
-	input [`DataBus] mem_data_i, //从存储器读取的数据
+	input [4:0]	cp0_waddr_i,
+	input [31:0] cp0_wdata_i,
+	input 		cp0_we_i,
     
     //访存阶段的结果
     output reg [4:0] wd_o,
@@ -18,6 +20,13 @@ module mem(
     output reg      wreg_o,
     output reg      whilo_o,
     output reg [31:0]  hi_o, lo_o,
+	output reg[4:0] cp0_waddr_o,
+	output reg[31:0] cp0_wdata_o,
+	output reg		cp0_we_o,
+
+	/*****存储器访问*****/
+	//从存储器读取数据
+	input [`DataBus] mem_data_i, //从存储器读取的数据
 	//输出到存储器的信息
 	output reg [`DataAddrBus] mem_addr_o,
 	output reg [`DataBus] mem_data_o,
@@ -35,7 +44,8 @@ module mem(
     always @(*) begin
         if(rst) {wd_o,wdata_o,wreg_o,whilo_o,hi_o,lo_o,
 		mem_addr_o, mem_data_o, mem_we_o, mem_sel_o, mem_ce_o,
-		LLbit_we_o, LLbit_value_o} = 0;
+		LLbit_we_o, LLbit_value_o,
+		cp0_waddr_o,cp0_wdata_o,cp0_we_o} = 0;
         else begin
             wd_o = wd_i;
             wdata_o = wdata_i;
@@ -43,6 +53,9 @@ module mem(
             whilo_o = whilo_i;
             hi_o = hi_i;
             lo_o = lo_i;
+			cp0_waddr_o = cp0_waddr_i;
+			cp0_wdata_o = cp0_wdata_i;
+			cp0_we_o = cp0_we_i;
 			//存储器相关信号
 			 mem_ce_o = 0;
 			 mem_sel_o = 4'b1111;

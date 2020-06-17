@@ -23,6 +23,7 @@
 //指令大类型->使用op域判断
 `define OP_SPECIAL      6'b000000
 `define OP_SPECIAL2		6'b011100
+`define OP_COP0			6'b010000
 `define OP_REGIMM		6'b000001
 `define OP_ANDI         6'b001100
 `define OP_ORI          6'b001101
@@ -53,6 +54,7 @@
 `define OP_SWR			6'b101110
 `define OP_LL 			6'b110000
 `define OP_SC  			6'b111000
+
 
 
 /****指令子类型->使用function域判断****/
@@ -105,6 +107,9 @@
 `define RT_BGEZ			5'b00001
 `define RT_BGEZAL		5'b10001
 
+/*****指令子类型->使用rs域判断****/
+`define RS_MFC0			5'b00000
+`define RS_MTC0			5'b00100
 
 /*aluop ->运算子类型	前3位表示alusel运算类型 后5位表示子类型编号*/
 //空指令
@@ -132,6 +137,8 @@
 `define ALU_MFLO		8'b011_00011
 `define ALU_MTHI		8'b011_00100
 `define ALU_MTLO		8'b011_00101
+`define ALU_MFC0		8'b011_00110
+`define ALU_MTC0		8'b011_00111
 //简单运算指令
 `define ALU_ADD			8'b100_00000
 `define ALU_ADDU		8'b100_00001

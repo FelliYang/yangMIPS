@@ -479,6 +479,29 @@ always @(*) begin
                     default: InstValid = 0;
                 endcase
             end
+			//COP0类
+			`OP_COP0:begin
+				case(rs) 
+					`RS_MFC0:begin
+						wreg_o = 1;
+						alusel_o = `ALU_RES_MOVE;
+						aluop_o = `ALU_MFC0;
+						reg1_read_o = 0;
+						reg2_read_o = 0;
+						wd_o = rt;
+						InstValid = 1;
+					end
+					`RS_MTC0:begin
+						wreg_o = 0;
+						alusel_o = `ALU_RES_MOVE;
+						aluop_o = `ALU_MTC0;
+						reg1_read_o = 0;
+						reg2_read_o = 1;
+						InstValid = 1;
+					end
+					default ;
+				endcase
+			end
             `OP_ANDI:begin
                 wreg_o = 1;
                 alusel_o = `ALU_RES_LOGIC;

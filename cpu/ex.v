@@ -15,17 +15,23 @@ module ex(
 
     //HILO模块给出的寄存器值
     input [31:0] hi_i,lo_i,
-    
     //访存阶段HI.LO数据前推
     input mem_whilo_i,
     input [31:0] mem_hi_i,mem_lo_i,
+
+	//CP0模块的寄存器内容
+	input [31:0] cp0_data_i,
+	output [4:0] cp0_raddr_o,
+	//访存阶段CP0最新数据前推
+	input [4:0] mem_cp0_waddr_i,
+	input [31:0] mem_cp0_wdata_i,
+	input 		mem_cp0_we_i,
 
     //指令多周期执行时，来自EX/MEM模块的临时信号
     input [63:0] hilo_temp_i,
     input [1:0] cnt_i, 
     output reg [63:0] hilo_temp_o, //运算中间结果
     output reg [1:0] cnt_o, //周期计数
-
     //与除法模块之间的连接信号
     output reg signed_div_o, //有符号除法
     output reg div_start_o, //开始除法运算
@@ -35,13 +41,18 @@ module ex(
     input       div_ready_i, //除法运算完成
 
 
-    //执行级的结果->通用寄存器
+	/**传递给EX/MEM模块的信号**/
+    //通用寄存器堆
     output reg [4:0] wd_o,
     output reg [31:0] wdata_o,
     output reg     wreg_o,
-    //->HILO寄存器
+    //HILO寄存器
     output reg  whilo_o,
     output reg [31:0] hi_o,lo_o,
+	//COP0寄存器堆
+	output reg [4:0] cp0_waddr_o,
+	output reg [31:0] cp0_wdata_o,
+	output reg 		cp0_we_o,
 	//其他传给MEM级的信号(用于存储指令)
 	output [7:0] aluop_o,
 	output [31:0] mem_addr_o,
@@ -168,6 +179,7 @@ always@(*)begin
         `ALU_MFLO: moveres = LO;
         `ALU_MOVZ: moveres = reg1_i;
         `ALU_MOVN: moveres = reg1_i;
+		`ALU_MFC0: moveres = cp0_waddr_o==mem_cp0_waddr_i && mem_cp0_we_i? mem_cp0_wdata_i : cp0_data_i;
         endcase
     end
 end
@@ -319,5 +331,19 @@ always@(*)begin
         
     end
 end
+
+//CPO指令实现
+always @(*) begin
+	if(rst) begin
+		{cp0_waddr_o, cp0_wdata_o, cp0_we_o} = 0;
+	end else if(aluop_i==`ALU_MTC0) begin //mtc0指令
+		cp0_we_o = 1;
+		cp0_wdata_o = reg2_i;
+		cp0_waddr_o = inst_i[15:11]; 
+	end else begin
+		{cp0_waddr_o, cp0_wdata_o, cp0_we_o} = 0;
+	end
+end
+assign cp0_raddr_o = rst ? 0 : inst_i[15:11];
 
 endmodule // ex
