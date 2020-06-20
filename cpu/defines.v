@@ -92,6 +92,14 @@
 //跳转分支指令
 `define FUC_JR			6'b001000
 `define FUC_JALR		6'b001001
+//不包括立即数的自陷指令
+`define FUC_TEQ			6'b110100
+`define FUC_TGE			6'b110000
+`define FUC_TGEU		6'b110001
+`define FUC_TLT			6'b110010
+`define FUC_TLTU		6'b110011
+`define FUC_TNE			6'b110110
+`define FUC_SYSCALL		6'b001100
 /*special2->*/
 `define FUC_CLZ			6'b100000
 `define FUC_CLO			6'b100001
@@ -100,12 +108,20 @@
 `define FUC_MADDU		6'b000001
 `define FUC_MSUB		6'b000100
 `define FUC_MSUBU		6'b000101
+/*COP0->*/
+`define FUC_ERET		6'b011000
 
 /*****指令子类型->使用rt域判断*****/
 `define RT_BLTZ			5'b00000
 `define RT_BLTZAL		5'b10000
 `define RT_BGEZ			5'b00001
 `define RT_BGEZAL		5'b10001
+`define RT_TEQI			5'b01100
+`define RT_TGEI			5'b01000
+`define RT_TGEIU		5'b01001
+`define RT_TLTI			5'b01010
+`define RT_TLTIU		5'b01011
+`define RT_TNEI			5'b01110
 
 /*****指令子类型->使用rs域判断****/
 `define RS_MFC0			5'b00000
@@ -187,9 +203,23 @@
 `define ALU_LWR			8'b110_01001
 `define ALU_SWL			8'b110_01010
 `define ALU_SWR			8'b110_01011
-`define ALU_LL			8'b100_01100
-`define ALU_SC			8'b100_01101
-
+`define ALU_LL			8'b110_01100
+`define ALU_SC			8'b110_01101
+//异常指令
+`define ALU_TEQ			8'b111_00000
+`define ALU_TGE			8'b111_00001
+`define ALU_TGEU		8'b111_00010
+`define ALU_TLT			8'b111_00011
+`define ALU_TLTU		8'b111_00100
+`define ALU_TNE			8'b111_00101
+`define ALU_SYSCALL		8'b111_00110
+`define ALU_TEQI		8'b111_00111
+`define ALU_TGEI		8'b111_01000
+`define ALU_TGEIU		8'b111_01001
+`define ALU_TLTI		8'b111_01010
+`define ALU_TLTIU		8'b111_01011
+`define ALU_TNEI		8'b111_01100
+`define ALU_ERET		8'b111_01101
 
 /*alusel -> 运算类型*/
 `define ALU_RES_NOP     3'b000
@@ -199,6 +229,7 @@
 `define ALU_RES_ARITH	3'b100 //算数指令
 `define ALU_RES_JUMP_BRANCH 3'b101
 `define ALU_RES_LOAD_STORE 3'b110
+`define ALU_RES_EXCEPTION 3'b111
 
 `define CP0_COUNT		5'b01001
 `define CP0_COMPARE		5'b01011

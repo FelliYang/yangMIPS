@@ -25,6 +25,7 @@ wire [31:0] pc;
 wire [31:0] id_pc_i; //译码级pc输入
 wire [31:0] id_inst_i; //译码级inst输入
 
+/*********连接译码阶段输出和其他模块输入*****/
 //连接译码阶段的输出和ID/EX模块的输入
 wire [31:0] reg1_data, reg2_data;
 wire [4:0]  reg1_addr, reg2_addr;
@@ -39,6 +40,8 @@ wire        id_wreg_o;
 wire [31:0] id_link_address_o; //转移指令返回地址
 wire 		id_is_in_delayslot_o;
 wire 		next_inst_in_delayslot_o;
+//异常控制相关
+wire [31:0] id_excepttype_o, id_current_inst_addr_o;
 //连接ID模块和PC_reg模块，用于转移指令的信号
 wire [31:0] id_branch_target_address_o;
 wire		id_branch_flag_o;
@@ -52,6 +55,7 @@ wire [7:0]  ex_aluop_i;
 wire [31:0] ex_link_address_i;
 wire 		ex_is_in_delayslot_i;
 wire [31:0] ex_inst_i;
+wire [31:0] ex_excepttype_i, ex_current_inst_addr_i;
 //连接ID/EX模块和ID模块输入，用于转移的信号
 wire 		is_in_delayslot;
 //连接HI/LO模块的输出与EX模块的输入
@@ -75,6 +79,8 @@ wire [31:0] ex_mem_addr_o, ex_reg2_o;
 wire [4:0] ex_cp0_waddr_o;
 wire [31:0] ex_cp0_wdata_o;
 wire 		ex_cp0_we_o;
+wire [31:0] ex_excepttype_o, ex_current_inst_addr_o;
+wire 		ex_is_in_delayslot_o;
 //EX模块与EM/MEM模块之间的临时信号
 wire [63:0] ex_hilo_temp_o, ex_hilo_temp_i;
 wire [1:0] ex_cnt_o, ex_cnt_i;
@@ -95,9 +101,12 @@ wire [31:0] mem_mem_addr_o, mem_reg2_o;
 wire [4:0] mem_cp0_waddr_i;
 wire [31:0] mem_cp0_wdata_i;
 wire 		mem_cp0_we_i;
-
+wire [31:0] mem_excepttype_i, mem_current_inst_addr_i;
+wire 		mem_is_in_delayslot_i;
 //连接LLbit_reg输出与MEM模块的输入
 wire 		mem_LLbit_i;
+//连接COP0的输出与MEM的输入
+wire [31:0] cp0_status, cp0_cause, cp0_epc;
 
 //连接访存阶段MEM模块的输出与MEM/WB模块的输入
 wire [31:0] mem_wdata_o;
@@ -106,7 +115,9 @@ wire        mem_wreg_o;
 wire        mem_whilo_o;
 wire [31:0] mem_hi_o,mem_lo_o;
 wire 		mem_LLbit_we_o,mem_LLbit_value_o;
-
+//MEM的其他输出信号
+wire [31:0] mem_current_inst_address_o, mem_cp0_epc_o, mem_excepttype_o;
+wire 		mem_is_in_delayslot_o;
 
 //连接MEM/WB模块的输出与回写阶段的输入
 wire [31:0] wb_wdata_i;
@@ -119,15 +130,20 @@ wire [4:0] wb_cp0_waddr_i;
 wire [31:0] wb_cp0_wdata_i;
 wire 		wb_cp0_we_i;
 
+/*****CTRL信号*********/
 //流水线暂停控制信号
 wire stallreq_from_id, stallreq_from_ex;
 wire [5:0] stall;
+//异常相关信号
+wire flush; 
+wire [31:0] new_pc;
 
 //pc_reg实例化
 pc_reg pc_reg0(
     .clk(clk), .rst(rst), .pc(pc), .ce(rom_ce_o) , .stall(stall),
 	.branch_target_address_i(id_branch_target_address_o),
-	.branch_flag_i(id_branch_flag_o)
+	.branch_flag_i(id_branch_flag_o),
+	.flush(flush), .new_pc(new_pc)
 );
 assign rom_addr_o = pc;
 
@@ -135,7 +151,8 @@ assign rom_addr_o = pc;
 if_id if_id0(
     .clk(clk), .rst(rst), .stall(stall),
     .if_pc(pc), .if_inst(rom_data_i),
-     .id_pc(id_pc_i), .id_inst(id_inst_i)
+    .id_pc(id_pc_i), .id_inst(id_inst_i),
+	.flush(flush)
     
 );
 
@@ -161,7 +178,8 @@ id id0(
 	.inst_o(id_inst_o),
     .aluop_o(id_aluop_o), .alusel_o(id_alusel_o),
     .wd_o(id_wd_o), .wreg_o(id_wreg_o), .reg1_o(id_reg1_o), .reg2_o(id_reg2_o),
-
+	//异常相关
+	.excepttype_o(id_excepttype_o), .current_inst_addr_o(id_current_inst_addr_o),
     //流水线暂停请求
     .stallreq_from_id(stallreq_from_id),
 
@@ -201,6 +219,9 @@ id_ex id_ex0(
 	.id_is_in_delayslot(id_is_in_delayslot_o),
 	.id_link_address(id_link_address_o),
 	.next_inst_in_delayslot_i(next_inst_in_delayslot_o),
+	//异常相关
+	.flush(flush),
+	.id_excepttype(id_excepttype_o), .id_current_inst_addr(id_current_inst_addr_o),
 
     //传递到执行阶段EX模块的信息
 	.ex_inst(ex_inst_i),
@@ -209,7 +230,7 @@ id_ex id_ex0(
     .ex_alusel(ex_alusel_i), .ex_aluop(ex_aluop_i),
 	.ex_link_address(ex_link_address_i), 
 	.ex_is_in_delayslot(ex_is_in_delayslot_i),
-
+	.ex_excepttype(ex_excepttype_i), .ex_current_inst_addr(ex_current_inst_addr_i),
 	//用于分支延迟槽的临时信号
 	.is_in_delayslot_o(is_in_delayslot)
 );
@@ -225,6 +246,7 @@ ex ex0(
     .alusel_i(ex_alusel_i), .aluop_i(ex_aluop_i),
 	.link_address_i(ex_link_address_i),
 	.is_in_delayslot_i(ex_is_in_delayslot_i),
+	.excepttype_i(ex_excepttype_i), .current_inst_addr_i(ex_current_inst_addr_i),
     //来自HI/LO模块的信息
     .hi_i(hi), .lo_i(lo),
 	//来自COP0的信息
@@ -247,7 +269,8 @@ ex ex0(
     //输入到EX/MEM的其他信号
 	.aluop_o(ex_aluop_o), .mem_addr_o(ex_mem_addr_o),
 	.reg2_o(ex_reg2_o),
-
+	.excepttype_o(ex_excepttype_o), .current_inst_addr_o(ex_current_inst_addr_o),
+	.is_in_delayslot_o(ex_is_in_delayslot_o),
     //连接EX/MEM模块的临时信号
     .hilo_temp_i(ex_hilo_temp_i), .cnt_i(ex_cnt_i),
     .hilo_temp_o(ex_hilo_temp_o), .cnt_o(ex_cnt_o),
@@ -274,13 +297,15 @@ div div0(
 //EX/MEM模块实例化
 ex_mem ex_mem0(
     .clk(clk), .rst(rst), .stall(stall),
-
+	.flush(flush),
     //从执行阶段EX模块传递过来的信息
     .ex_wdata(ex_wdata_o), .ex_wd(ex_wd_o), .ex_wreg(ex_wreg_o),
     .ex_whilo(ex_whilo_o), .ex_hi(ex_hi_o), .ex_lo(ex_lo_o),
 	.ex_aluop(ex_aluop_o), .ex_mem_addr(ex_mem_addr_o), 
 	.ex_reg2(ex_reg2_o),
 	.ex_cp0_waddr(ex_cp0_waddr_o), .ex_cp0_wdata(ex_cp0_wdata_o), .ex_cp0_we(ex_cp0_we_o),
+	.ex_excepttype(ex_excepttype_o), .ex_current_inst_addr(ex_current_inst_addr_o),
+	.ex_is_in_delayslot(ex_is_in_delayslot_o),
     //连接EX模块的临时信号
     .hilo_i(ex_hilo_temp_o), .cnt_i(ex_cnt_o),
     .hilo_o(ex_hilo_temp_i), .cnt_o(ex_cnt_i),
@@ -289,7 +314,9 @@ ex_mem ex_mem0(
     .mem_wdata(mem_wdata_i), .mem_wd(mem_wd_i), .mem_wreg(mem_wreg_i),
     .mem_whilo(mem_whilo_i), .mem_hi(mem_hi_i), .mem_lo(mem_lo_i),
 	.mem_aluop(mem_aluop_o), .mem_mem_addr(mem_mem_addr_o), .mem_reg2(mem_reg2_o),
-	.mem_cp0_waddr(mem_cp0_waddr_i), .mem_cp0_wdata(mem_cp0_wdata_i), .mem_cp0_we(mem_cp0_we_i)
+	.mem_cp0_waddr(mem_cp0_waddr_i), .mem_cp0_wdata(mem_cp0_wdata_i), .mem_cp0_we(mem_cp0_we_i),
+	.mem_excepttype(mem_excepttype_i), .mem_current_inst_addr(mem_current_inst_addr_i),
+	.mem_is_in_delayslot(mem_is_in_delayslot_i)
 );
 
 //MEM模块实例化
@@ -300,12 +327,24 @@ mem mem0(
     .whilo_i(mem_whilo_i), .hi_i(mem_hi_i), .lo_i(mem_lo_i),
 	.aluop_i(mem_aluop_o), .mem_addr_i(mem_mem_addr_o), .reg2_i(mem_reg2_o),
 	.cp0_waddr_i(mem_cp0_waddr_i), .cp0_wdata_i(mem_cp0_wdata_i), .cp0_we_i(mem_cp0_we_i),
-
-    //输出到MEM/WB模块的信息
+	.excepttype_i(mem_excepttype_i), .current_inst_address_i(mem_current_inst_addr_i),
+	.is_in_delayslot_i(mem_is_in_delayslot_i),
+	
+	//来自CP0的信息
+	.cp0_status_i(cp0_status), .cp0_cause_i(cp0_cause), .cp0_epc_i(cp0_epc),
+    
+	//输出到MEM/WB模块的信息
     .wdata_o(mem_wdata_o), .wd_o(mem_wd_o), .wreg_o(mem_wreg_o),
     .whilo_o(mem_whilo_o), .hi_o(mem_hi_o), .lo_o(mem_lo_o),
 	.LLbit_we_o(mem_LLbit_we_o), .LLbit_value_o(mem_LLbit_value_o),
 	.cp0_waddr_o(mem_cp0_waddr_o), .cp0_wdata_o(mem_cp0_wdata_o), .cp0_we_o(mem_cp0_we_o),
+
+	//输出到CP0的信号
+	.excepttype_o(mem_excepttype_o), .current_inst_address_o(mem_current_inst_address_o),
+	.is_in_delayslot_o(mem_is_in_delayslot_o),
+
+	//输出到CTRL的信号
+	.cp0_epc_o(mem_cp0_epc_o),
 
 	//输出到RAM的信号
 	.mem_addr_o(ram_addr_o), .mem_data_o(ram_data_o), .mem_we_o(ram_we_o),
@@ -320,7 +359,7 @@ mem mem0(
 
 //MEM/WB模块实例化
 mem_wb mem_wb0(
-    .clk(clk), .rst(rst), .stall(stall),
+    .clk(clk), .rst(rst), .stall(stall), .flush(flush),
 
     //来自访存阶段mem模块的信息
     .mem_wdata(mem_wdata_o), .mem_wd(mem_wd_o), .mem_wreg(mem_wreg_o),
@@ -354,7 +393,7 @@ LLbit_reg LLbit_reg0(
     //送到执行阶段的信息
     .LLbit_o(mem_LLbit_i),
 	//异常触发信号
-	.flush(1'b0)
+	.flush(flush)
 
 );
 
@@ -362,14 +401,21 @@ cp0_reg cp0_reg0(
 	.clk(clk), .rst(rst),
 	.raddr_i(cp0_raddr_i), .data_o(cp0_data_o),
 	.waddr_i(wb_cp0_waddr_i), .wdata_i(wb_cp0_wdata_i), .we_i(wb_cp0_we_i),
-	.int_i(int_i), .timer_int_o(timer_int_o)
+	.int_i(int_i), .timer_int_o(timer_int_o),
+	.status_o(cp0_status), .cause_o(cp0_cause), .epc_o(cp0_epc),
+	.excepttype_i(mem_excepttype_o), .current_inst_addr_i(mem_current_inst_address_o),
+	.is_in_delayslot_i(mem_is_in_delayslot_o)
 
 );
 //流水线控制暂停模块
 ctrl ctrl0(
     .rst(rst),
     .stallreq_from_id(stallreq_from_id), .stallreq_from_ex(stallreq_from_ex),
-    .stall(stall)
+    .stall(stall),
+	.flush(flush), 
+	.new_pc(new_pc),
+	.excepttype_i(mem_excepttype_o),
+	.cp0_epc_i(mem_cp0_epc_o)
 );
 
 endmodule // openmips

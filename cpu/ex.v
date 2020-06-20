@@ -2,7 +2,7 @@
 module ex(
     input rst,
     
-    //来自译码级的信息
+    /*******来自译码级的信息*******/
 	input [31:0] inst_i,
     input [2:0]alusel_i,
     input [7:0]aluop_i,
@@ -12,6 +12,8 @@ module ex(
     input       wreg_i,
     input  [31:0] link_address_i, //转移指令返回地址
     input         is_in_delayslot_i, //当前指令是否位于分支延迟槽
+	//异常相关信号
+	input [31:0] excepttype_i, current_inst_addr_i,
 
     //HILO模块给出的寄存器值
     input [31:0] hi_i,lo_i,
@@ -56,7 +58,10 @@ module ex(
 	//其他传给MEM级的信号(用于存储指令)
 	output [7:0] aluop_o,
 	output [31:0] mem_addr_o,
-	output [31:0] reg2_o, 
+	output [31:0] reg2_o,
+	//异常相关信号
+	output [31:0] excepttype_o, current_inst_addr_o,
+	output is_in_delayslot_o,
 
     //流水线暂停请求
     output reg stallreq_from_ex
@@ -88,6 +93,14 @@ wire [63:0] hilo_temp; //零时保存乘法结果
 reg [63:0] multres;
 reg [63:0] hilo_temp1; //临时保存乘加或乘减结果
 
+//异常相关信号
+reg trapassert, ovassert; //自陷和溢出异常
+assign excepttype_o = {excepttype_i[31:12], ovassert,trapassert, excepttype_i[9:8], 8'b0};
+assign is_in_delayslot_o = is_in_delayslot_i;
+assign current_inst_addr_o = current_inst_addr_i;
+
+//TODO 两种异常触发逻辑
+
 //流水线暂停信号
 reg stallreq_from_mul, stallreq_from_div;
 always @(*) begin
@@ -96,22 +109,27 @@ end
 
 
 //算数运算
-//所有减法运算，需要对操作数2取反+1，得到相反数的补码表示
+//所有减法运算，有符号数比较运算，有符号子自陷运算，需要对操作数2取反+1，得到相反数的补码表示
 assign reg2_i_mux = ((aluop_i == `ALU_SUB) ||
                     (aluop_i == `ALU_SUBU) ||
                     (aluop_i == `ALU_SLT) ||
-                    (aluop_i == `ALU_SLTI)) ?
+                    (aluop_i == `ALU_SLTI) ||
+					(aluop_i == `ALU_TLT) ||
+					(aluop_i == `ALU_TLTI) ||
+					(aluop_i == `ALU_TGE) ||
+					(aluop_i == `ALU_TGEI)) ?
                     (~reg2_i) +1 : reg2_i;
 assign result_sum = reg1_i + reg2_i_mux;
 //指令add addi sub需要判断溢出，此时 执行的是reg1 和 reg2_i_mux的加法
 assign ov_sum = ((!reg1_i[31]) && (!reg2_i_mux[31]) && result_sum[31]) ||
                     ((reg1_i[31]) && (reg2_i_mux[31]) && !result_sum[31]);
-//SLT和SLTU指令
-assign reg1_lt_reg2 = ((aluop_i == `ALU_SLT)) ?
-         (  (reg1_i[31]&&!reg2_i[31]) || //三种reg1操作数小于reg2操作数的情况
-             (!reg1_i[31]&&!reg2_i[31] && result_sum[31]) || 
-             (reg1_i[31] && reg2_i[31] && result_sum[31])   ):
-             (reg1_i < reg2_i); //无符号数直接使用比较运算符
+//reg1是否小于reg2,对于有符号的比较指令&自陷指令和无符号的比较指令&自限指令 处理方式不一样
+assign reg1_lt_reg2 = ((aluop_i==`ALU_SLT) || (aluop_i == `ALU_SLTI) || (aluop_i==`ALU_TLT) || 
+				(aluop_i==`ALU_TLTI) || (aluop_i==`ALU_TGE) || (aluop_i==`ALU_TGEI)) ?
+         	(  (reg1_i[31]&&!reg2_i[31]) || //三种reg1操作数小于reg2操作数的情况
+				(!reg1_i[31]&&!reg2_i[31] && result_sum[31]) || 
+				(reg1_i[31] && reg2_i[31] && result_sum[31])   ):
+				(reg1_i < reg2_i); //无符号数直接使用比较运算符
 
 /*乘法运算*/
 //有符号数的乘法过程中先取两个操作数绝对值，后期修正
@@ -215,9 +233,14 @@ end
 //组合逻辑->根据类型选择
 always @(*) begin
     wd_o = wd_i;
-    if(((aluop_i==`ALU_ADD) || (aluop_i==`ALU_ADDI) || (aluop_i==`ALU_SUB)) && ov_sum==1)
+    if(((aluop_i==`ALU_ADD) || (aluop_i==`ALU_ADDI) || (aluop_i==`ALU_SUB)) && ov_sum==1) begin
+		ovassert = 1;
         wreg_o = 0; //溢出不改变寄存器
-    else wreg_o = wreg_i;
+	end else begin
+		ovassert = 0;
+		wreg_o = wreg_i;
+		
+	end
 
     case(alusel_i)
         `ALU_RES_LOGIC: wdata_o = logicout;
@@ -345,5 +368,21 @@ always @(*) begin
 	end
 end
 assign cp0_raddr_o = rst ? 0 : inst_i[15:11];
+
+//判断是否自陷
+always @(*) begin
+	if(rst) trapassert = 0;
+	else begin
+		trapassert = 0;
+		case (aluop_i)
+			`ALU_TEQ, `ALU_TEQI: trapassert = (reg1_i==reg2_i) ? 1 : 0;
+			`ALU_TNE, `ALU_TNEI: trapassert = (reg1_i!=reg2_i) ? 1 : 0;
+			`ALU_TGE, `ALU_TGEU, `ALU_TGEI, `ALU_TGEIU: trapassert = ~reg1_lt_reg2;
+			`ALU_TLT, `ALU_TLTU, `ALU_TLTI, `ALU_TLTIU: trapassert = reg1_lt_reg2;
+			default: ;
+		endcase
+	end
+end
+
 
 endmodule // ex

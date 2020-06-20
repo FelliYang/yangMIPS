@@ -3,6 +3,7 @@ module if_id(
     input                clk,
     input                rst,
     input [5:0]         stall,
+	input				flush, //异常清空清号
     //取指阶段的结果
     input  [31:0]       if_pc,
     input [31:0]        if_inst,
@@ -13,7 +14,7 @@ module if_id(
 );
 
 always @(posedge clk) begin
-    if(rst)
+    if(rst || flush)
         {id_pc, id_inst} <= 0;
     else if(!stall[1])begin
         {id_pc, id_inst} <= {if_pc, if_inst};

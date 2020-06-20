@@ -11,10 +11,10 @@ module yangmips_min_sopc_tb();
     initial begin
         rst = 1;
         #195 rst = 0;
-        #4000 $stop;
+        #10000 $stop;
     end
 
-    //实例化
+    //实例化soc
     yangmips_min_sopc yangmips_min_sopc0(
         .clk(CLOCK_50), .rst(rst)
     );

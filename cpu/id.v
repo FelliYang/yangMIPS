@@ -32,6 +32,8 @@ module id(
     output reg                     	wreg_o, //指令是否需要写入目的寄存器
     output reg[31:0]                reg1_o, //指令源操作数1
     output reg[31:0]                reg2_o, //指令源操作数2
+	//异常处理特殊信号
+	output [31:0] excepttype_o, current_inst_addr_o,
 
     //流水线暂停请求
     output   	                  stallreq_from_id,
@@ -68,6 +70,13 @@ assign pc_plus_8 = pc_i + 8;
 assign imm_sll2_signedext = {{14{inst_i[15]}}, inst_i[15:0], 2'b00};
 assign is_in_delayslot_o = rst ? 0 : is_in_delayslot_i;
 
+//异常相关变量
+reg excepttype_is_syscall, excepttype_is_eret;
+assign excepttype_o = {19'b0, excepttype_is_eret, 2'b0, ~InstValid, excepttype_is_syscall, 8'b0};
+assign current_inst_addr_o = pc_i;
+
+//TODO 三种异常触发逻辑
+
 always @(*) begin
     if(rst) begin
         {reg1_addr_o,reg2_addr_o,reg1_read_o,reg2_read_o,
@@ -75,7 +84,9 @@ always @(*) begin
         {opcode,rs,rt,rd,sa,func,imm} = 0;
         {branch_target_address_o, branch_flag_o, link_addr_o,
          next_inst_in_delayslot_o} = 0;
-        InstValid = 1;
+        InstValid = 0;
+		excepttype_is_syscall = 0;
+		excepttype_is_eret = 0;
     end else begin
         {reg1_read_o,reg2_read_o,
         aluop_o,alusel_o,wreg_o, imm} = 0; //组合逻辑
@@ -87,6 +98,8 @@ always @(*) begin
         reg2_addr_o = rt;
         wd_o = rd; //默认目的寄存器地址
         InstValid = 0;
+		excepttype_is_syscall = 0;
+		excepttype_is_eret = 0;
         case(opcode)
             //special类
             `OP_SPECIAL:begin
@@ -348,7 +361,63 @@ always @(*) begin
                         next_inst_in_delayslot_o = 1;
                         InstValid = 1;
                     end
-
+					`FUC_TEQ:begin
+						wreg_o = 0;
+						aluop_o = `ALU_TEQ;
+						alusel_o = `ALU_RES_EXCEPTION;
+						reg1_read_o = 1;
+						reg2_read_o = 1;
+						InstValid = 1;
+					end
+					`FUC_TGE:begin
+						wreg_o = 0;
+						aluop_o = `ALU_TGE;
+						alusel_o = `ALU_RES_EXCEPTION;
+						reg1_read_o = 1;
+						reg2_read_o = 1;
+						InstValid = 1;
+					end
+					`FUC_TGEU:begin
+						wreg_o = 0;
+						aluop_o = `ALU_TGEU;
+						alusel_o = `ALU_RES_EXCEPTION;
+						reg1_read_o = 1;
+						reg2_read_o = 1;
+						InstValid = 1;
+					end
+					`FUC_TLT:begin
+						wreg_o = 0;
+						aluop_o = `ALU_TLT;
+						alusel_o = `ALU_RES_EXCEPTION;
+						reg1_read_o = 1;
+						reg2_read_o = 1;
+						InstValid = 1;
+					end
+					`FUC_TLTU:begin
+						wreg_o = 0;
+						aluop_o = `ALU_TLTU;
+						alusel_o = `ALU_RES_EXCEPTION;
+						reg1_read_o = 1;
+						reg2_read_o = 1;
+						InstValid = 1;
+					end
+					`FUC_TNE:begin
+						wreg_o = 0;
+						aluop_o = `ALU_TNE;
+						alusel_o = `ALU_RES_EXCEPTION;
+						reg1_read_o = 1;
+						reg2_read_o = 1;
+						InstValid = 1;
+					end
+					`FUC_SYSCALL:begin
+						wreg_o = 0;
+						aluop_o = `ALU_SYSCALL;
+						alusel_o = `ALU_RES_EXCEPTION;
+						reg1_read_o = 0;
+						reg2_read_o = 0;
+						InstValid = 1;
+						excepttype_is_syscall = 1;
+					end
                 default: InstValid = 0; //未定义指令
                 
                 endcase
@@ -476,31 +545,96 @@ always @(*) begin
                         link_addr_o = pc_plus_8;
                         InstValid = 1;
                     end
+					`RT_TEQI:begin
+						wreg_o = 0;
+						aluop_o = `ALU_TEQI;
+						alusel_o = `ALU_RES_EXCEPTION;
+						reg1_read_o = 1;
+						reg2_read_o = 0;
+						imm = {{16{inst_i[15]}}, inst_i[15:0]};
+						InstValid = 1;
+					end
+					`RT_TGEI:begin
+						wreg_o = 0;
+						aluop_o = `ALU_TGEI;
+						alusel_o = `ALU_RES_EXCEPTION;
+						reg1_read_o = 1;
+						reg2_read_o = 0;
+						imm = {{16{inst_i[15]}}, inst_i[15:0]};
+						InstValid = 1;
+					end
+					`RT_TGEIU:begin
+						wreg_o = 0;
+						aluop_o = `ALU_TGEIU;
+						alusel_o = `ALU_RES_EXCEPTION;
+						reg1_read_o = 1;
+						reg2_read_o = 0;
+						imm = {{16{inst_i[15]}}, inst_i[15:0]};
+						InstValid = 1;
+					end
+					`RT_TLTI:begin
+						wreg_o = 0;
+						aluop_o = `ALU_TLTI;
+						alusel_o = `ALU_RES_EXCEPTION;
+						reg1_read_o = 1;
+						reg2_read_o = 0;
+						imm = {{16{inst_i[15]}}, inst_i[15:0]};
+						InstValid = 1;
+					end
+					`RT_TLTIU:begin
+						wreg_o = 0;
+						aluop_o = `ALU_TLTIU;
+						alusel_o = `ALU_RES_EXCEPTION;
+						reg1_read_o = 1;
+						reg2_read_o = 0;
+						imm = {{16{inst_i[15]}}, inst_i[15:0]};
+						InstValid = 1;
+					end
+					`RT_TNEI:begin
+						wreg_o = 0;
+						aluop_o = `ALU_TNEI;
+						alusel_o = `ALU_RES_EXCEPTION;
+						reg1_read_o = 1;
+						reg2_read_o = 0;
+						imm = {{16{inst_i[15]}}, inst_i[15:0]};
+						InstValid = 1;
+					end
                     default: InstValid = 0;
                 endcase
             end
 			//COP0类
 			`OP_COP0:begin
-				case(rs) 
-					`RS_MFC0:begin
-						wreg_o = 1;
-						alusel_o = `ALU_RES_MOVE;
-						aluop_o = `ALU_MFC0;
-						reg1_read_o = 0;
-						reg2_read_o = 0;
-						wd_o = rt;
-						InstValid = 1;
-					end
-					`RS_MTC0:begin
-						wreg_o = 0;
-						alusel_o = `ALU_RES_MOVE;
-						aluop_o = `ALU_MTC0;
-						reg1_read_o = 0;
-						reg2_read_o = 1;
-						InstValid = 1;
-					end
-					default ;
-				endcase
+				if(func==`FUC_ERET && inst_i[25]==1) begin //eret指令
+					wreg_o = 1;
+					aluop_o = `ALU_ERET;
+					alusel_o = `ALU_RES_EXCEPTION;
+					reg1_read_o = 0;
+					reg2_read_o = 0;
+					InstValid = 1;
+					excepttype_is_eret = 1;
+				end else begin
+					case(rs)
+						`RS_MFC0:begin
+							wreg_o = 1;
+							alusel_o = `ALU_RES_MOVE;
+							aluop_o = `ALU_MFC0;
+							reg1_read_o = 0;
+							reg2_read_o = 0;
+							wd_o = rt;
+							InstValid = 1;
+						end
+						`RS_MTC0:begin
+							wreg_o = 0;
+							alusel_o = `ALU_RES_MOVE;
+							aluop_o = `ALU_MTC0;
+							reg1_read_o = 0;
+							reg2_read_o = 1;
+							InstValid = 1;
+						end
+						default ;
+					endcase
+				end
+				
 			end
             `OP_ANDI:begin
                 wreg_o = 1;
