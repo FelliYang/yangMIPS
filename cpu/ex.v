@@ -99,7 +99,7 @@ assign excepttype_o = {excepttype_i[31:12], ovassert,trapassert, excepttype_i[9:
 assign is_in_delayslot_o = is_in_delayslot_i;
 assign current_inst_addr_o = current_inst_addr_i;
 
-//TODO 两种异常触发逻辑
+
 
 //流水线暂停信号
 reg stallreq_from_mul, stallreq_from_div;

@@ -75,7 +75,7 @@ reg excepttype_is_syscall, excepttype_is_eret;
 assign excepttype_o = {19'b0, excepttype_is_eret, 2'b0, ~InstValid, excepttype_is_syscall, 8'b0};
 assign current_inst_addr_o = pc_i;
 
-//TODO 三种异常触发逻辑
+
 
 always @(*) begin
     if(rst) begin

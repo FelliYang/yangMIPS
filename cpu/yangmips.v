@@ -1,25 +1,32 @@
 `include "defines.v"
 module yangmips(
     input clk,
-    input rst,
-    //指令存储器
-	output [`InstBus] rom_addr_o, //输出到指令存储器的地址
-    output        rom_ce_o,  //指令存储器使能信号
-	input [`InstAddrBus] rom_data_i, //从指存储器取得的指令
-	//数据存储器
-	output [`DataAddrBus] ram_addr_o,
-	output [`DataBus] ram_data_o,
-	output ram_ce_o, ram_we_o,
-	output [3:0] ram_sel_o,
-	input [`DataBus]ram_data_i,
+    input rst,	
 	//中断信号
 	input [5:0] int_i,
-	output timer_int_o
-	
+	output timer_int_o,
+	//总线接口
+	output [31:0] iwishbone_addr_o,iwishbone_data_o,
+	output iwishbone_we_o,
+	output [3:0] iwishbone_sel_o,
+	output iwishbone_stb_o,
+	output iwishbone_cyc_o,
+	input [31:0] iwishbone_data_i,
+	input iwishbone_ack_i,
+	output [31:0] dwishbone_addr_o,dwishbone_data_o,
+	output dwishbone_we_o,
+	output [3:0] dwishbone_sel_o,
+	output dwishbone_stb_o,
+	output dwishbone_cyc_o,
+	input [31:0] dwishbone_data_i,
+	input dwishbone_ack_i
 );
 
-//连接IF阶段输出和IF/ID模块输入的变量
+//连接IF阶段输出和IF/ID模块|wishbone模块 输入的变量
 wire [31:0] pc;
+wire 		ce_inst; //指令存储器选择信号
+wire 		stallreq_from_if;
+wire [31:0] if_inst;
 
 //连接IF/ID模块和译码阶段的变量
 wire [31:0] id_pc_i; //译码级pc输入
@@ -118,15 +125,19 @@ wire 		mem_LLbit_we_o,mem_LLbit_value_o;
 //MEM的其他输出信号
 wire [31:0] mem_current_inst_address_o, mem_cp0_epc_o, mem_excepttype_o;
 wire 		mem_is_in_delayslot_o;
+wire 		stallreq_from_mem;
+wire [31:0] ram_addr, ram_data_o, ram_data_i;
+wire [3:0] 	ram_sel;
+wire 		ram_ce, ram_we;
 
 //连接MEM/WB模块的输出与回写阶段的输入
 wire [31:0] wb_wdata_i;
 wire [4:0]  wb_wd_i;
 wire        wb_wreg_i;
 wire        wb_whilo_i;
-wire [31:0]  wb_hi_i, wb_lo_i;
-wire wb_LLbit_we_i, wb_LLbit_value_i;
-wire [4:0] wb_cp0_waddr_i;
+wire [31:0] wb_hi_i, wb_lo_i;
+wire 		wb_LLbit_we_i, wb_LLbit_value_i;
+wire [4:0] 	wb_cp0_waddr_i;
 wire [31:0] wb_cp0_wdata_i;
 wire 		wb_cp0_we_i;
 
@@ -140,17 +151,27 @@ wire [31:0] new_pc;
 
 //pc_reg实例化
 pc_reg pc_reg0(
-    .clk(clk), .rst(rst), .pc(pc), .ce(rom_ce_o) , .stall(stall),
+    .clk(clk), .rst(rst), .pc(pc), .ce(ce_inst) , .stall(stall),
 	.branch_target_address_i(id_branch_target_address_o),
 	.branch_flag_i(id_branch_flag_o),
 	.flush(flush), .new_pc(new_pc)
 );
-assign rom_addr_o = pc;
 
+//TODO 实例化指令总线接口
+wishbone_bus_if wishbone0(
+	.clk(clk), .rst(rst), .flush_i(flush), .stall_i(stall),
+	.cpu_ce_i(ce_inst), .cpu_data_i(0), .cpu_addr_i(pc), .cpu_we_i(0), .cpu_sel_i(4'b1111), 
+	.cpu_data_o(if_inst), .stallreq(stallreq_from_if),
+
+	.wishbone_data_i(iwishbone_data_i), .wishbone_ack_i(iwishbone_ack_i),
+	.wishbone_addr_o(iwishbone_addr_o), .wishbone_data_o(iwishbone_data_o),
+	.wishbone_we_o(iwishbone_we_o), .wishbone_sel_o(iwishbone_sel_o),
+	.wishbone_stb_o(iwishbone_stb_o), .wishbone_cyc_o(iwishbone_cyc_o)
+);
 //IF/ID模块实例化
 if_id if_id0(
     .clk(clk), .rst(rst), .stall(stall),
-    .if_pc(pc), .if_inst(rom_data_i),
+    .if_pc(pc), .if_inst(if_inst),
     .id_pc(id_pc_i), .id_inst(id_inst_i),
 	.flush(flush)
     
@@ -345,16 +366,27 @@ mem mem0(
 
 	//输出到CTRL的信号
 	.cp0_epc_o(mem_cp0_epc_o),
-
 	//输出到RAM的信号
-	.mem_addr_o(ram_addr_o), .mem_data_o(ram_data_o), .mem_we_o(ram_we_o),
-	.mem_sel_o(ram_sel_o), .mem_ce_o(ram_ce_o),
+	.mem_addr_o(ram_addr), .mem_data_o(ram_data_o), .mem_we_o(ram_we),
+	.mem_sel_o(ram_sel), .mem_ce_o(ram_ce),
 
 	//从RAM输入的信号
 	.mem_data_i(ram_data_i),
 
 	//从LLbit_reg输入的信号
 	.LLbit_i(mem_LLbit_i)
+);
+
+//TODO 实例化数据总线接口
+wishbone_bus_if wishbone1(
+	.clk(clk), .rst(rst), .flush_i(flush), .stall_i(stall),
+	.cpu_ce_i(ram_ce), .cpu_data_i(ram_data_o), .cpu_addr_i(ram_addr), .cpu_we_i(ram_we), .cpu_sel_i(ram_sel), 
+	.cpu_data_o(ram_data_i), .stallreq(stallreq_from_mem),
+
+	.wishbone_data_i(dwishbone_data_i), .wishbone_ack_i(dwishbone_ack_i),
+	.wishbone_addr_o(dwishbone_addr_o), .wishbone_data_o(dwishbone_data_o),
+	.wishbone_we_o(dwishbone_we_o), .wishbone_sel_o(dwishbone_sel_o),
+	.wishbone_stb_o(dwishbone_stb_o), .wishbone_cyc_o(dwishbone_cyc_o)
 );
 
 //MEM/WB模块实例化
@@ -411,6 +443,7 @@ cp0_reg cp0_reg0(
 ctrl ctrl0(
     .rst(rst),
     .stallreq_from_id(stallreq_from_id), .stallreq_from_ex(stallreq_from_ex),
+	.stallreq_from_if(stallreq_from_if), .stallreq_from_mem(stallreq_from_mem),
     .stall(stall),
 	.flush(flush), 
 	.new_pc(new_pc),

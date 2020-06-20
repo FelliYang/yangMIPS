@@ -1,7 +1,9 @@
 module ctrl(
 	input rst,
+	input stallreq_from_if,
 	input stallreq_from_id, //来自译码阶段的暂停请求
 	input stallreq_from_ex, //来自执行阶段的暂停请求
+	input stallreq_from_mem,
 	output reg [5:0] stall,
 
 	//异常相关信息
@@ -28,15 +30,23 @@ always @(*) begin
 			32'he: new_pc = cp0_epc_i; //eret
 			default: ;
 		endcase
-	end	else if(stallreq_from_id) begin 
-		stall = 6'b000111;
+	end else if (stallreq_from_mem) begin
+		stall = 6'b011111;
 		flush = 0;
 		new_pc = 0;
 	end else if(stallreq_from_ex) begin
 		stall = 6'b001111;
 		flush = 0;
 		new_pc = 0;
-	end else begin 
+	end else if(stallreq_from_id) begin 
+		stall = 6'b000111;
+		flush = 0;
+		new_pc = 0;
+	end else if(stallreq_from_if) begin
+		stall = 6'b000111;
+		flush = 0;
+		new_pc = 0;
+	end	else begin 
 		stall = 0;
 		flush = 0;
 		new_pc = 0;
