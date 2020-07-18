@@ -129,8 +129,9 @@ end
 
 //读操作
 always @(*) begin
-	if(rst) data_o <= 0;
+	if(rst) data_o = 0;
 	else begin
+		data_o = 0;
 		if(we_i) begin
 			case (raddr_i)
 				`CP0_COUNT: data_o = wdata_i;

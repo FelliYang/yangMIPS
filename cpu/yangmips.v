@@ -379,7 +379,7 @@ mem mem0(
 
 //TODO 实例化数据总线接口
 wishbone_bus_if wishbone1(
-	.clk(clk), .rst(rst), .flush_i(flush), .stall_i(stall),
+	.clk(clk), .rst(rst), .flush_i(flush), .stall_i({1'b0,stall[4],4'b0}),
 	.cpu_ce_i(ram_ce), .cpu_data_i(ram_data_o), .cpu_addr_i(ram_addr), .cpu_we_i(ram_we), .cpu_sel_i(ram_sel), 
 	.cpu_data_o(ram_data_i), .stallreq(stallreq_from_mem),
 

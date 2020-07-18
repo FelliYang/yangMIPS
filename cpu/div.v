@@ -66,7 +66,7 @@ module div(
 				DivFree:begin
 					if(next_state == DivOn) begin 
 						cnt <= 0; //开始计数
-						//有符号数除法使用操作数的绝对值进行出发
+						//有符号数除法使用操作数的绝对值进行除法
 						if(signed_div_i && opdata1_i[31]) temp_op1 = ~opdata1_i + 1;
 						else temp_op1 = opdata1_i; //阻塞赋值
 						if(signed_div_i && opdata2_i[31]) temp_op2 = ~opdata2_i + 1;

@@ -13,7 +13,7 @@ module LLbit_reg(
 reg LLbit;
 
 //写操作
-always @(clk) begin
+always @(posedge clk) begin
 	if(rst) LLbit <= 0;
 	else if(flush) LLbit <= 0;
 	else if (we) LLbit <= LLbit_i;	

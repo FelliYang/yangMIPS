@@ -63,7 +63,7 @@ module ex(
 	output [31:0] excepttype_o, current_inst_addr_o,
 	output is_in_delayslot_o,
 
-    //流水线暂停请求
+    //流水线暂停请求	
     output reg stallreq_from_ex
 
 );
@@ -256,6 +256,7 @@ end
 always @(*) begin
     if(rst) {hilo_temp_o, cnt_o, stallreq_from_mul, hilo_temp1} = 0;
     else begin
+		{hilo_temp_o, cnt_o, stallreq_from_mul, hilo_temp1} = 0;
         case(aluop_i)
             `ALU_MADD, `ALU_MADDU: begin
                 if(cnt_i == 0) begin //执行阶段第一个周期
@@ -283,7 +284,6 @@ always @(*) begin
                     hilo_temp1 = hilo_temp_i + {HI, LO};
                 end
             end
-            default:{hilo_temp_o, cnt_o, stallreq_from_mul, hilo_temp1} = 0;
         endcase
     end
 end
@@ -292,6 +292,7 @@ end
 always @(*) begin
     if(rst) {stallreq_from_div, signed_div_o, div_start_o, div_opdata1_o, div_opdata2_o} = 0;
     else begin
+		{stallreq_from_div, signed_div_o, div_start_o, div_opdata1_o, div_opdata2_o} = 0;
         case(aluop_i)
             `ALU_DIV:begin
                 if(div_ready_i==0) begin
@@ -315,8 +316,6 @@ always @(*) begin
                     {stallreq_from_div, signed_div_o, div_start_o, div_opdata1_o, div_opdata2_o} = 0;
                 end
             end
-        default:
-            {stallreq_from_div, signed_div_o, div_start_o, div_opdata1_o, div_opdata2_o} = 0;
         endcase 
     end
 end

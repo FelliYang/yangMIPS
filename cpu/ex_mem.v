@@ -13,7 +13,7 @@ module ex_mem(
 	input [7:0] 		ex_aluop,
 	input [31:0]		ex_mem_addr, 
 	input [31:0] 		ex_reg2,
-	input [5:0]			ex_cp0_waddr,
+	input [4:0]			ex_cp0_waddr,
 	input [31:0]		ex_cp0_wdata,
 	input 				ex_cp0_we,
 	//异常相关
@@ -34,7 +34,7 @@ module ex_mem(
     output reg [31:0]   mem_hi,mem_lo,
 	output reg [7:0]	mem_aluop,
 	output reg [31:0]	mem_mem_addr, mem_reg2,
-	output reg [5:0] 	mem_cp0_waddr,
+	output reg [4:0] 	mem_cp0_waddr,
 	output reg [31:0]	mem_cp0_wdata,
 	output reg 			mem_cp0_we,
 	output reg [31:0]	mem_excepttype, mem_current_inst_addr,

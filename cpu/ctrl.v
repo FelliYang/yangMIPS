@@ -21,6 +21,7 @@ always @(*) begin
 	end else if(excepttype_i!=0) begin
 		flush = 1;
 		stall = 0;
+		new_pc = 0;
 		case (excepttype_i)
 			32'h1: new_pc = 32'h20; //interrupt
 			32'h8: new_pc = 32'h40;  //syscall
